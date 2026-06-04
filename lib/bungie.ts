@@ -177,11 +177,16 @@ async function getActivityHistory(
 ): Promise<ActivityHistoryEntry[]> {
   try {
     const data = await bungieFetch<{ activities?: ActivityHistoryEntry[] }>(
-      `/Destiny2/${membership.membershipType}/Account/${membership.membershipId}/Character/${characterId}/Stats/Activities/?mode=${mode}&count=${count}&page=${page}`
+      `/Destiny2/${membership.membershipType}/Account/${membership.membershipId}/Character/${characterId}/Stats/Activities/?mode=${mode}&count=${count}&page=${page}`,
+      // Short TTL so a newly-completed clear shows up within ~30s of the
+      // next AutoRefresh tick. Only the first page is hot — deeper pages are
+      // historical and could probably use a longer TTL, but the per-page
+      // saving isn't worth the extra branching.
+      { cacheSeconds: 30 }
     );
     return data.activities ?? [];
   } catch (e) {
-    // 1665 = "DestinyPrivacyRestriction" etc. Be lenient — just return empty.
+    // 1665 = "DestinyPrivacyRestriction" etc. Be lenient, just return empty.
     return [];
   }
 }
@@ -480,7 +485,10 @@ export async function getAggregateActivityClears(
   const perChar: Resp[] = [];
   for (const c of characters) {
     const r = await bungieFetch<Resp>(
-      `/Destiny2/${membership.membershipType}/Account/${membership.membershipId}/Character/${c.characterId}/Stats/AggregateActivityStats/`
+      `/Destiny2/${membership.membershipType}/Account/${membership.membershipId}/Character/${c.characterId}/Stats/AggregateActivityStats/`,
+      // Short TTL: this powers the lifetime CLEARS counter on every activity
+      // card, and lifts after a fresh clear ~30s after AutoRefresh ticks.
+      { cacheSeconds: 30 }
     ).catch(() => ({ activities: [] as AggregateRow[] }));
     perChar.push(r);
   }
