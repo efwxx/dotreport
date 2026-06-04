@@ -21,6 +21,11 @@ export const sections: SectionDef[] = [
       //   { type: "activity", name: "Vault of Glass", account: 2, title: "VoG (Alt)" }
       { type: "activity" },
       { type: "nowPlaying" },
+      // Optional: a live activity card. Shows current activity + elapsed
+      // timer + fireteam when the player is in-game; quietly becomes an
+      // offline state otherwise. Requires the account's Bungie transitory
+      // privacy to be set to "All Users".
+      { type: "liveActivity" },
     ],
   },
 ];

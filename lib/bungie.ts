@@ -406,6 +406,234 @@ export type EmblemDefinition = {
   backgroundColor?: { red: number; green: number; blue: number; alpha: number };
 };
 
+// Live-activity snapshot for the LiveActivity card.
+//
+// Status determination uses ProfileTransitoryData as the truth source for
+// "is the player online", because the per-character CharacterActivities data
+// stays stale for hours after a session ends (Bungie just leaves the last
+// activity hash sitting there). Transitory's `partyMembers` array is
+// populated only while the player is actively logged in, and its
+// `currentActivity.endTime` flips to a past timestamp the moment an activity
+// ends. Combine those two and we get a reliable online / offline signal.
+export type LiveActivityStatus =
+  | "in-activity" // in a real activity (raid, strike, crucible, etc.)
+  | "in-orbit" // online but not in any activity (orbit, social space, menus)
+  | "offline" // not logged in — transitory data is empty
+  | "private"; // Bungie privacy is hiding the data
+
+export type LiveActivitySnapshot = {
+  status: LiveActivityStatus;
+  // ISO timestamp the current activity began. Used by the client-side timer.
+  startedAt?: string;
+  // `activityName` is the specific map/encounter (e.g. "The Burnout" in
+  // Trials, "Vault of Glass" in a raid). `playlistName` is the parent
+  // playlist/mode the player queued from (e.g. "Trials of Osiris", "Iron
+  // Banner Control"). Only set when it's distinct from `activityName` —
+  // raid/dungeon/story sessions leave it undefined.
+  activityName?: string;
+  playlistName?: string;
+  activityImage?: string | null;
+  modeType?: number;
+  // The fireteam, INCLUDING the player themselves. Empty array offline /
+  // private.
+  partyMembers: Array<{
+    membershipId: string;
+    displayName: string;
+    emblemUrl: string | null;
+  }>;
+};
+
+type TransitoryData = {
+  partyMembers?: Array<{
+    membershipId: string;
+    emblemHash: number;
+    displayName: string;
+    status: number;
+  }>;
+  currentActivity?: {
+    startTime?: string;
+    endTime?: string;
+  };
+};
+
+type CharacterActivity = {
+  dateActivityStarted?: string;
+  currentActivityHash: number;
+  currentActivityModeType?: number;
+  // For playlist-based activities (Trials, Crucible, Iron Banner, Gambit,
+  // Vanguard Ops, etc.) Bungie populates this with the playlist's hash. The
+  // map/instance lives in `currentActivityHash`. For non-playlist content
+  // (raids, dungeons, story) this is usually 0 or matches currentActivityHash.
+  currentPlaylistActivityHash?: number;
+};
+
+// Component privacy: 1 = public, 2 = private. Defined here to avoid magic
+// numbers further down.
+const PRIVACY_PRIVATE = 2;
+
+function isActivityOngoing(
+  currentActivity: TransitoryData["currentActivity"]
+): boolean {
+  if (!currentActivity?.startTime) return false;
+  // Bungie uses a sentinel future date (year 9999) while the activity is
+  // in progress and flips endTime to the actual end timestamp once it's
+  // over. Anything in the past means the activity has ended.
+  if (currentActivity.endTime) {
+    const endMs = new Date(currentActivity.endTime).getTime();
+    if (Number.isFinite(endMs) && endMs > 0 && endMs < Date.now()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export async function getLiveActivity(
+  membership: DestinyMembership
+): Promise<LiveActivitySnapshot | null> {
+  type ComponentEnvelope<T> = { data?: T; privacy?: number };
+  type Resp = {
+    profileTransitoryData?: ComponentEnvelope<TransitoryData>;
+    characterActivities?: ComponentEnvelope<Record<string, CharacterActivity>>;
+  };
+
+  let data: Resp;
+  try {
+    data = await bungieFetch<Resp>(
+      `/Destiny2/${membership.membershipType}/Profile/${membership.membershipId}/?components=204,1000`,
+      // Tight TTL — this card lives or dies on freshness.
+      { cacheSeconds: 15 }
+    );
+  } catch {
+    return null;
+  }
+
+  const transWrap = data.profileTransitoryData;
+  const transitory = transWrap?.data;
+  const chars = data.characterActivities?.data ?? {};
+
+  // Resolve party-member emblems up front so every branch can return them.
+  // Offline / orbit states still render an empty fireteam list cleanly.
+  //
+  // Defensive fallbacks: Bungie's transitory data sometimes returns blank
+  // displayNames (notably for the player themselves on the local roster) and
+  // zero emblem hashes for the "tower" emblem state. We fall back to the
+  // signed-in account's tag for self, and to a sensible placeholder for
+  // anyone else. Emblem URL gracefully degrades to null and the UI skips
+  // the thumbnail entirely.
+  const members = transitory?.partyMembers ?? [];
+  const emblemDefs = await Promise.all(
+    members.map((m) =>
+      m.emblemHash
+        ? resolveEmblemDefinition(m.emblemHash).catch(() => null)
+        : Promise.resolve(null)
+    )
+  );
+  const selfTag =
+    membership.bungieGlobalDisplayName?.trim() ||
+    membership.displayName?.trim() ||
+    null;
+  const partyMembers = members.map((m, i) => {
+    const def = emblemDefs[i];
+    const raw = m.displayName?.trim();
+    const isSelf = m.membershipId === membership.membershipId;
+    const displayName =
+      raw || (isSelf ? selfTag : null) || "Guardian";
+    return {
+      membershipId: m.membershipId,
+      displayName,
+      emblemUrl:
+        cdn(def?.secondaryIcon) ?? cdn(def?.displayProperties.icon) ?? null,
+    };
+  });
+
+  // Privacy hides the whole bucket.
+  if (transWrap?.privacy === PRIVACY_PRIVATE) {
+    return { status: "private", partyMembers: [] };
+  }
+
+  // Transitory data is the offline-detection truth: while a player is logged
+  // in, Bungie always populates `partyMembers` with at least the player
+  // themselves. An empty / missing array means they're not currently online,
+  // regardless of what the stale character-activities data says.
+  const isOnline = members.length > 0;
+  if (!isOnline) {
+    return { status: "offline", partyMembers: [] };
+  }
+
+  // Player is online but currentActivity has ended or isn't populated yet.
+  // This catches the moment between activities (back in orbit) and the
+  // social spaces where transitory's currentActivity stays cleared.
+  if (!isActivityOngoing(transitory?.currentActivity)) {
+    return { status: "in-orbit", partyMembers };
+  }
+
+  // Online + in an ongoing activity — pick the activity hash from whichever
+  // character is ACTUALLY on it. Bungie leaves stale `currentActivityHash`
+  // values on idle alts for hours after you log off them, so we have to be
+  // strict about matching:
+  //
+  //   1. The character's `dateActivityStarted` must equal the transitory
+  //      `currentActivity.startTime` exactly (both are server-set, so they
+  //      match to the second when the data is genuinely live).
+  //   2. That character's `currentActivityHash` must be non-zero.
+  //
+  // No fallback. If neither condition holds, we default to orbit rather
+  // than risk surfacing a stale activity from an idle alt. That's the
+  // failure mode the user keeps hitting after a character swap.
+  const liveStart = transitory?.currentActivity?.startTime;
+  const activeChar = liveStart
+    ? Object.values(chars).find(
+        (c) =>
+          c.dateActivityStarted === liveStart &&
+          c.currentActivityHash &&
+          c.currentActivityHash !== 0
+      )
+    : undefined;
+
+  if (!activeChar) {
+    // No confident match — could be a brand-new instance whose hash hasn't
+    // propagated, a character swap that left the alt holding the live hash,
+    // or just orbit. All three render the same way: as orbit.
+    return {
+      status: "in-orbit",
+      partyMembers,
+      startedAt: liveStart,
+    };
+  }
+
+  // Resolve both the specific activity AND the playlist it was queued from,
+  // when they differ. This is how we get "Trials of Osiris" + "The Burnout"
+  // for PvP playlists rather than just one or the other.
+  const hashesToResolve = [activeChar.currentActivityHash];
+  const playlistHash = activeChar.currentPlaylistActivityHash;
+  if (playlistHash && playlistHash !== activeChar.currentActivityHash) {
+    hashesToResolve.push(playlistHash);
+  }
+  const defs = await resolveActivityDefinitions(hashesToResolve);
+  const def = defs.get(activeChar.currentActivityHash);
+  const playlistDef = playlistHash ? defs.get(playlistHash) : undefined;
+
+  const activityName = def?.displayProperties.name;
+  const playlistName = playlistDef?.displayProperties.name;
+  // Only surface the playlist as a separate line if it actually adds info.
+  // (Same name means we'd just be repeating ourselves; a raid's playlist
+  // hash typically resolves to the same display name as the activity.)
+  const showPlaylist =
+    playlistName && playlistName !== activityName ? playlistName : undefined;
+
+  return {
+    status: "in-activity",
+    startedAt:
+      transitory?.currentActivity?.startTime ?? activeChar.dateActivityStarted,
+    activityName,
+    playlistName: showPlaylist,
+    activityImage:
+      cdn(def?.pgcrImage) ?? cdn(def?.displayProperties.icon) ?? null,
+    modeType: activeChar.currentActivityModeType,
+    partyMembers,
+  };
+}
+
 // Look up an emblem's full inventory-item definition. Cached for 24h since
 // emblem art doesn't change.
 export const resolveEmblemDefinition = cache(

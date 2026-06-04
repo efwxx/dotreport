@@ -55,6 +55,14 @@ export type SectionDef =
     }
   // Last.fm now-playing card.
   | { type: "nowPlaying" }
+  // Live in-game activity card. Shows current activity, a ticking elapsed
+  // timer, and fireteam members (with their equipped emblems) when the
+  // player is on. Quietly drops to an "offline" state when they're not.
+  // Requires the player's Bungie privacy to expose Transitory data.
+  //
+  //   account — 1 (default) or 2+. Same convention as the activity sections.
+  //   title   — card title (defaults to "Live Activity").
+  | { type: "liveActivity"; account?: number; title?: string }
   // Project showcase — list of cards, each clickable if `href` is set.
   | { type: "projects"; title?: string; items: ProjectItem[] }
   // Generic vertical heading + free-form HTML/text. Useful for a quick

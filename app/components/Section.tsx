@@ -3,6 +3,7 @@ import type { SectionDef } from "@/lib/sections";
 import { Activities } from "./Activities";
 import { Hero } from "./Hero";
 import { Links } from "./Links";
+import { LiveActivity } from "./LiveActivity";
 import { NowPlaying } from "./NowPlaying";
 import { Projects } from "./Projects";
 
@@ -42,6 +43,15 @@ export function Section({ def }: { def: SectionDef }) {
       return (
         <Suspense fallback={<div className="card skeleton-card">Loading…</div>}>
           <NowPlaying />
+        </Suspense>
+      );
+    case "liveActivity":
+      return (
+        <Suspense fallback={<div className="card skeleton-card">Loading…</div>}>
+          <LiveActivity
+            accountOverride={def.account}
+            titleOverride={def.title}
+          />
         </Suspense>
       );
     case "projects":
