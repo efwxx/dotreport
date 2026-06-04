@@ -406,6 +406,52 @@ export type EmblemDefinition = {
   backgroundColor?: { red: number; green: number; blue: number; alpha: number };
 };
 
+// Look up a player's display name + tag by their Destiny membership id.
+// Used to fill in missing names on fireteam members — Bungie's transitory
+// `partyMembers[].displayName` ships blank for many accounts, especially
+// on the freshly-created Bungie Name system. Hitting the User endpoint
+// once per missing member gets us the proper "Name#0000" tag. Cached for
+// 24h since this changes very rarely.
+export const resolvePlayerInfo = cache(
+  async (membershipId: string): Promise<string | null> => {
+    try {
+      type Resp = {
+        bungieNetUser?: { displayName?: string };
+        destinyMemberships?: Array<{
+          bungieGlobalDisplayName?: string;
+          bungieGlobalDisplayNameCode?: number;
+          displayName?: string;
+        }>;
+      };
+      const data = await bungieFetch<Resp>(
+        // membershipType -1 = "All Memberships" — Bungie figures out the
+        // correct platform for us.
+        `/User/GetMembershipDataById/${membershipId}/-1/`,
+        { cacheSeconds: 60 * 60 * 24 }
+      );
+      // Prefer Bungie Global Display Name (the cross-platform tag).
+      const mem = data.destinyMemberships?.find(
+        (m) => m.bungieGlobalDisplayName && m.bungieGlobalDisplayNameCode
+      );
+      if (mem?.bungieGlobalDisplayName) {
+        const code = String(mem.bungieGlobalDisplayNameCode ?? 0).padStart(
+          4,
+          "0"
+        );
+        return `${mem.bungieGlobalDisplayName}#${code}`;
+      }
+      // Fall back to legacy platform display name or BungieNet handle.
+      const legacy = data.destinyMemberships?.[0]?.displayName?.trim();
+      if (legacy) return legacy;
+      const bnet = data.bungieNetUser?.displayName?.trim();
+      if (bnet) return bnet;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+);
+
 // Live-activity snapshot for the LiveActivity card.
 //
 // Status determination uses ProfileTransitoryData as the truth source for
@@ -532,12 +578,24 @@ export async function getLiveActivity(
     membership.bungieGlobalDisplayName?.trim() ||
     membership.displayName?.trim() ||
     null;
+
+  // For each member with a missing display name, hit the User endpoint to
+  // resolve their tag. Done in parallel; resolvePlayerInfo is cached so
+  // repeated views are free. Self never needs this lookup — we already have
+  // the tag from the membership we used to bootstrap.
+  const memberLookups = await Promise.all(
+    members.map(async (m) => {
+      const raw = m.displayName?.trim();
+      if (raw) return raw;
+      if (m.membershipId === membership.membershipId) return selfTag;
+      const looked = await resolvePlayerInfo(m.membershipId);
+      return looked || null;
+    })
+  );
+
   const partyMembers = members.map((m, i) => {
     const def = emblemDefs[i];
-    const raw = m.displayName?.trim();
-    const isSelf = m.membershipId === membership.membershipId;
-    const displayName =
-      raw || (isSelf ? selfTag : null) || "Guardian";
+    const displayName = memberLookups[i] || "Guardian";
     return {
       membershipId: m.membershipId,
       displayName,

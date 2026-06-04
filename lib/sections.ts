@@ -60,9 +60,18 @@ export type SectionDef =
   // player is on. Quietly drops to an "offline" state when they're not.
   // Requires the player's Bungie privacy to expose Transitory data.
   //
-  //   account — 1 (default) or 2+. Same convention as the activity sections.
-  //   title   — card title (defaults to "Live Activity").
-  | { type: "liveActivity"; account?: number; title?: string }
+  //   account    — 1 (default) or 2+. Same convention as the activity
+  //                sections.
+  //   title      — card title (defaults to "Live Activity").
+  //   orbitImage — URL of the image shown when the player is in orbit /
+  //                a social space (defaults to "/orbit.jpg"). Drop a file
+  //                at `public/orbit.jpg` to populate it.
+  | {
+      type: "liveActivity";
+      account?: number;
+      title?: string;
+      orbitImage?: string;
+    }
   // Project showcase — list of cards, each clickable if `href` is set.
   | { type: "projects"; title?: string; items: ProjectItem[] }
   // Generic vertical heading + free-form HTML/text. Useful for a quick

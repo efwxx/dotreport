@@ -5,7 +5,13 @@ import { LiveTimer } from "./LiveTimer";
 type Props = {
   accountOverride?: number;
   titleOverride?: string;
+  orbitImage?: string;
 };
+
+// Default path. Drop a file at `public/orbit.jpg` (the path served at /orbit.jpg)
+// to populate. If no file is present, the image element silently fails and
+// the layout still works — just a blank box where the image would be.
+const DEFAULT_ORBIT_IMAGE = "/orbit.jpg";
 
 // Card showing the player's current Destiny activity: name, image, elapsed
 // time (ticking client-side), and fireteam. Renders one of four states
@@ -14,6 +20,7 @@ type Props = {
 export async function LiveActivity({
   accountOverride,
   titleOverride,
+  orbitImage = DEFAULT_ORBIT_IMAGE,
 }: Props = {}) {
   const account = resolveAccount(accountOverride);
   if (!account) {
@@ -86,7 +93,17 @@ export async function LiveActivity({
             <span className="card-stat-label">ONLINE</span>
           </div>
         </div>
-        <div className="empty live-empty">In orbit or a social space.</div>
+        <div className="live-body">
+          <div
+            className="live-activity-image is-orbit"
+            style={{ backgroundImage: `url(${orbitImage})` }}
+            aria-hidden
+          />
+          <div className="live-info">
+            <div className="live-activity-name">In Orbit</div>
+            <div className="live-activity-sub">A social space or menu.</div>
+          </div>
+        </div>
         {snapshot.partyMembers.length > 0 && (
           <Fireteam members={snapshot.partyMembers} />
         )}

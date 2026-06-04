@@ -51,6 +51,7 @@ export function Section({ def }: { def: SectionDef }) {
           <LiveActivity
             accountOverride={def.account}
             titleOverride={def.title}
+            orbitImage={def.orbitImage}
           />
         </Suspense>
       );
