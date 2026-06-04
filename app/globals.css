@@ -1,0 +1,758 @@
+:root {
+  --bg: #0a0a0b;
+  --bg-elev: #131316;
+  --border: #1f1f24;
+  --text: #ededee;
+  --muted: #8a8a93;
+  --accent: #f5f5f7;
+  --raid: #d9b35a;
+  --dungeon: #6aa4ff;
+  --live: #ff4d6d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+}
+
+/* ---------- Header / emblem ---------- */
+
+.hero {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  margin-bottom: 32px;
+}
+
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.55;
+  filter: saturate(0.85);
+}
+
+.hero-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 11, 0.2) 0%,
+    rgba(10, 10, 11, 0.85) 100%
+  );
+}
+
+.hero-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 24px;
+}
+
+.emblem-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hero-name {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Click-to-copy variant used in multi-hero mode. Visually identical to the
+   plain text version, plus a hover affordance + brief green confirmation. */
+button.hero-name-copy {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s ease, text-shadow 0.15s ease;
+}
+
+.hero-name-copy:hover {
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.25);
+}
+
+.hero-name-copy:focus-visible {
+  outline: none;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.4);
+}
+
+.hero-name-copy.is-copied,
+.hero-name-copy.is-copied:hover {
+  color: #4ade80;
+  text-shadow: 0 0 14px rgba(74, 222, 128, 0.45);
+}
+
+.hero-meta {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.hero-meta .dot {
+  width: 3px;
+  height: 3px;
+  background: var(--muted);
+  border-radius: 50%;
+}
+
+/* ---------- Sections ---------- */
+
+section + section {
+  margin-top: 36px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+/* Add visual breathing room between top-level sections in the section
+   router output (each row / projects / etc. is a direct child of .page). */
+.page > * + * {
+  margin-top: 16px;
+}
+.page > section + section,
+.page > .projects-section,
+.page > .text-section {
+  margin-top: 32px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+
+/* ---------- Shared card / 2-col layout ---------- */
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+@media (min-width: 620px) {
+  .profile-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  min-height: 148px;
+}
+
+.skeleton-card {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.card-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+
+.card-stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.card-stat-label {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+/* ---------- Now playing card ---------- */
+
+.np-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.np-art {
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  background: #222 center / cover no-repeat;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.np-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.np-title {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-sub {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-album {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  text-align: center;
+}
+
+/* ---------- Projects ---------- */
+
+.projects-section { /* spacing handled by .page > section + section */ }
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 620px) {
+  .projects-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.project-card {
+  min-height: 0; /* override the 148px floor on .card */
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.project-card-link {
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.project-card-link:hover {
+  border-color: #3a3a44;
+  background: #1a1a1f;
+}
+
+.project-card-link:hover .project-arrow {
+  transform: translateX(3px);
+  color: var(--text);
+}
+
+.project-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.project-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-arrow {
+  color: var(--muted);
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.project-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.project-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.project-tag {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 3px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
+/* ---------- Free-form text section ---------- */
+
+.text-card {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.np-status.live .card-stat-value {
+  color: var(--live);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pulse {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.85); }
+}
+
+/* ---------- Link pills ---------- */
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 32px;
+  margin-top: -16px;
+}
+
+.link-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  border-radius: 999px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    color 0.15s ease;
+}
+
+.link-pill:hover {
+  border-color: #3a3a44;
+  background: #1a1a1f;
+}
+
+/* Buttons reset to match anchor pills exactly. */
+button.link-pill {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.copy-pill.is-copied,
+.copy-pill.is-copied:hover {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.55);
+  background: rgba(74, 222, 128, 0.10);
+}
+
+/* ---------- Clears strip (HTML dots, round at any width) ---------- */
+
+.clears-chart {
+  position: relative;
+  flex: 1;
+  min-height: 72px;
+  margin: 4px 4px 0;
+}
+
+.clears-baseline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-0.5px);
+}
+
+.clears-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px; /* center on (left, top) */
+  display: block;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.15s ease;
+  z-index: 1;
+}
+
+.clears-dot:hover,
+.clears-dot:focus-visible {
+  z-index: 30;
+}
+
+/* Gold ★ overlay on low-man / solo-dungeon clears. Pinned to the top-right
+   of the dot with a subtle text shadow so it stays readable on any dot color. */
+.clears-dot-star {
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  font-size: 10px;
+  line-height: 1;
+  color: #fbbf24;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  transition: transform 0.15s ease;
+}
+
+.clears-dot.is-star:hover .clears-dot-star {
+  transform: scale(1.15);
+}
+
+/* Soft white-gold halo for "special" achievements (flawless OR solo dungeon).
+   Layered on the dot core so it tints to match the dot color underneath. */
+.clears-dot.is-glow .clears-dot-core {
+  box-shadow:
+    0 0 0 2px rgba(251, 191, 36, 0.55),
+    0 0 10px 2px rgba(251, 191, 36, 0.35);
+}
+
+.clears-dot.is-glow:hover .clears-dot-core {
+  box-shadow:
+    0 0 0 3px rgba(251, 191, 36, 0.7),
+    0 0 14px 3px rgba(251, 191, 36, 0.45);
+}
+
+.clears-dot-core {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px transparent;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.clears-chart.raid .clears-dot.is-normal .clears-dot-core {
+  background: #4ade80;
+}
+.clears-chart.raid .clears-dot.is-normal:hover .clears-dot-core {
+  box-shadow: 0 0 0 5px rgba(74, 222, 128, 0.18);
+}
+
+/* Dungeons stay blue so swapping the env var gives an obvious visual cue. */
+.clears-chart.dungeon .clears-dot.is-normal .clears-dot-core {
+  background: #60a5fa;
+}
+.clears-chart.dungeon .clears-dot.is-normal:hover .clears-dot-core {
+  box-shadow: 0 0 0 5px rgba(96, 165, 250, 0.20);
+}
+
+/* Master runs get a distinct purple tone in either mode. */
+.clears-dot.is-master .clears-dot-core {
+  background: #c084fc;
+}
+.clears-dot.is-master:hover .clears-dot-core {
+  box-shadow: 0 0 0 5px rgba(192, 132, 252, 0.22);
+}
+
+.clears-dot:hover { transform: scale(1.1); }
+
+.clears-dot:focus-visible .clears-dot-core {
+  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.25);
+}
+
+.clears-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  text-align: center;
+}
+
+/* ---------- Dot flyout (CSS-only, no JS) ---------- */
+
+.flyout {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 140px;
+  padding: 10px 12px;
+  background: #16161a;
+  border: 1px solid #2c2c34;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 40;
+}
+
+.clears-dot:hover .flyout,
+.clears-dot:focus-visible .flyout {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.flyout::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #2c2c34;
+}
+
+.flyout::before {
+  content: "";
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #16161a;
+  z-index: 1;
+}
+
+.flyout-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.005em;
+}
+
+.flyout-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flyout-pill {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  line-height: 1.3;
+}
+
+.flyout-pill.normal {
+  background: rgba(74, 222, 128, 0.14);
+  color: #4ade80;
+}
+
+.flyout-pill.master {
+  background: rgba(192, 132, 252, 0.18);
+  color: #c084fc;
+}
+
+.flyout-duration {
+  font-size: 11px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.flyout-time {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.flyout-meta {
+  font-size: 10px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* Fireteam-size tag with a star (low-man raid / solo dungeon). */
+.flyout-meta.is-star {
+  color: #fbbf24;
+}
+
+/* Flawless / solo-dungeon glow tag. */
+.flyout-meta.is-glow,
+.flyout-meta.is-flawless {
+  color: #fde68a;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.flyout-star {
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* ---------- States ---------- */
+
+.skeleton,
+.empty,
+.error {
+  padding: 14px 16px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.error { color: #ff8a8a; }
+
+/* ---------- Footer ---------- */
+
+footer {
+  margin-top: 64px;
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+footer a:hover { color: var(--text); }

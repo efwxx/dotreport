@@ -1,0 +1,65 @@
+import { Suspense } from "react";
+import type { SectionDef } from "@/lib/sections";
+import { Activities } from "./Activities";
+import { Hero } from "./Hero";
+import { Links } from "./Links";
+import { NowPlaying } from "./NowPlaying";
+import { Projects } from "./Projects";
+
+// Central section router. Every entry in config/site.ts passes through here,
+// including the children of `row`. Each branch wraps its async widget in its
+// own Suspense boundary so a slow Bungie call doesn't block unrelated
+// sections from streaming in.
+export function Section({ def }: { def: SectionDef }) {
+  switch (def.type) {
+    case "hero":
+      return (
+        <Suspense fallback={<div className="skeleton">Loading guardian…</div>}>
+          <Hero
+            accountOverride={def.account}
+            displayNameOverride={def.displayName}
+          />
+        </Suspense>
+      );
+    case "links":
+      return (
+        <Suspense fallback={null}>
+          <Links />
+        </Suspense>
+      );
+    case "activity":
+      return (
+        <Suspense fallback={<div className="card skeleton-card">Loading…</div>}>
+          <Activities
+            nameOverride={def.name}
+            modeOverride={def.mode}
+            titleOverride={def.title}
+            accountOverride={def.account}
+          />
+        </Suspense>
+      );
+    case "nowPlaying":
+      return (
+        <Suspense fallback={<div className="card skeleton-card">Loading…</div>}>
+          <NowPlaying />
+        </Suspense>
+      );
+    case "projects":
+      return <Projects title={def.title} items={def.items} />;
+    case "text":
+      return (
+        <section className="text-section">
+          {def.title && <h2 className="section-title">{def.title}</h2>}
+          <div className="card text-card">{def.body}</div>
+        </section>
+      );
+    case "row":
+      return (
+        <div className="profile-grid">
+          {def.columns.map((col, i) => (
+            <Section key={i} def={col} />
+          ))}
+        </div>
+      );
+  }
+}
