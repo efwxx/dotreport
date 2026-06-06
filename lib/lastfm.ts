@@ -1,4 +1,4 @@
-// Last.fm client — server-side only.
+// Last.fm client - server-side only.
 // Docs: https://www.last.fm/api/show/user.getRecentTracks
 
 const LASTFM_BASE = "https://ws.audioscrobbler.com/2.0/";
@@ -50,7 +50,7 @@ export async function getRecentTrack(): Promise<Track | null> {
   url.searchParams.set("limit", "1");
 
   const res = await fetch(url.toString(), {
-    // Now-playing changes frequently — keep this short.
+    // Now-playing changes frequently - keep this short.
     next: { revalidate: 30 },
   });
   if (!res.ok) {

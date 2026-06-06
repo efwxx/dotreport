@@ -22,28 +22,28 @@ export type ProjectItem = {
 
 export type SectionDef =
   // Big card with the player's emblem background, name, class, and power.
-  //   account     — 1 (default) or 2+, referencing BUNGIE_NAME_<n>. The page
+  //   account     - 1 (default) or 2+, referencing BUNGIE_NAME_<n>. The page
   //                 favicon and browser tab title also follow this account.
-  //   displayName — override the name rendered on the card (and in the tab
+  //   displayName - override the name rendered on the card (and in the tab
   //                 title). Falls back to DISPLAY_NAME_<n>, then to
   //                 "<name>#<code>".
   | { type: "hero"; account?: number; displayName?: string }
   // Row of pill links (default Bungie/Raid Report/Last.fm + EXTRA_LINK_* env).
   | { type: "links" }
-  // Tracked-activity dot strip. All knobs optional — falls back to the
+  // Tracked-activity dot strip. All knobs optional - falls back to the
   // TRACKED_ACTIVITY_* env vars when omitted, so multiple activity sections
   // can coexist by overriding inline.
   //
-  //   name    — substring matched against the activity's Bungie display name.
+  //   name    - substring matched against the activity's Bungie display name.
   //             Catches every difficulty / reissue. Set to "" or "*" for a
   //             WILDCARD strip that shows the 10 most recent clears of any
   //             activity in the chosen mode (count becomes lifetime total,
   //             deleted characters included).
-  //   mode    — "raid" (default) or "dungeon". Auto-detected from the matched
+  //   mode    - "raid" (default) or "dungeon". Auto-detected from the matched
   //             activity when omitted, so usually optional.
-  //   title   — card title. Defaults to "Recent <name>" or
+  //   title   - card title. Defaults to "Recent <name>" or
   //             "Recent Raids" / "Recent Dungeons" for wildcards.
-  //   account — 1 (default) or 2+, referencing the BUNGIE_NAME_<n> /
+  //   account - 1 (default) or 2+, referencing the BUNGIE_NAME_<n> /
   //             BUNGIE_CODE_<n> env pair. Lets you pull clears from alt
   //             Bungie accounts into their own card.
   | {
@@ -54,19 +54,36 @@ export type SectionDef =
       account?: number;
     }
   // PvP / Gambit match tracker. W/L coloured dot strip + lifetime record.
-  //   mode    — "crucible" (default), "trials", "ironBanner", or "gambit".
-  //   title   — card title (defaults to the mode's display name).
-  //   account — 1 (default) or 2+.
+  //   mode    - "crucible" (default), "trials", "ironBanner", or "gambit".
+  //   title   - card title (defaults to the mode's display name).
+  //   account - 1 (default) or 2+.
   | {
       type: "pvp";
       mode?: "crucible" | "trials" | "ironBanner" | "gambit";
       title?: string;
       account?: number;
     }
+  // Bungie clan card. Name, motto, member count, your rank.
+  //   account - 1 (default) or 2+.
+  //   title   - card title (defaults to "Clan").
+  | { type: "clan"; account?: number; title?: string }
+  // Current-character loadout card. Shows the equipped weapons + armor + the
+  // six character tier stats.
+  //   account  - 1 (default) or 2+.
+  //   title    - card title (defaults to "Loadout").
+  //   extended - false (default) shows the 3 weapons + the equipped exotic
+  //              armor; true shows all 3 weapons + all 5 armor pieces.
+  //              Stats render in both modes.
+  | {
+      type: "loadout";
+      account?: number;
+      title?: string;
+      extended?: boolean;
+    }
   // speedrun.com personal-best card. Optional.
-  //   username — speedrun.com handle. Falls back to SPEEDRUN_USERNAME env.
-  //   title    — card title.
-  //   limit    — number of PBs to show (defaults to 5).
+  //   username - speedrun.com handle. Falls back to SPEEDRUN_USERNAME env.
+  //   title    - card title.
+  //   limit    - number of PBs to show (defaults to 5).
   | {
       type: "speedrun";
       username?: string;
@@ -80,10 +97,10 @@ export type SectionDef =
   // player is on. Quietly drops to an "offline" state when they're not.
   // Requires the player's Bungie privacy to expose Transitory data.
   //
-  //   account    — 1 (default) or 2+. Same convention as the activity
+  //   account    - 1 (default) or 2+. Same convention as the activity
   //                sections.
-  //   title      — card title (defaults to "Live Activity").
-  //   orbitImage — URL of the image shown when the player is in orbit /
+  //   title      - card title (defaults to "Live Activity").
+  //   orbitImage - URL of the image shown when the player is in orbit /
   //                a social space (defaults to "/orbit.jpg"). Drop a file
   //                at `public/orbit.jpg` to populate it.
   | {
@@ -92,7 +109,7 @@ export type SectionDef =
       title?: string;
       orbitImage?: string;
     }
-  // Project showcase — list of cards, each clickable if `href` is set.
+  // Project showcase - list of cards, each clickable if `href` is set.
   | { type: "projects"; title?: string; items: ProjectItem[] }
   // Generic vertical heading + free-form HTML/text. Useful for a quick
   // "about" blurb or attribution paragraph.

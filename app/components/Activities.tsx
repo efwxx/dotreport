@@ -14,7 +14,7 @@ import { ClearsStrip, type ClearPoint } from "./ClearsStrip";
 
 // Defaults come from env so swapping the tracked activity site-wide is a
 // one-line change in .env.local. The `*Override` props let any individual
-// section in config/site.ts override these inline — useful when you want
+// section in config/site.ts override these inline - useful when you want
 // multiple `activity` sections tracking different raids or dungeons.
 //
 // Wildcard mode: leave `name` empty ("" or "*") to track the 10 most recent
@@ -150,7 +150,7 @@ export async function Activities({
     ]);
 
     const matchingHashes = new Set<number>();
-    // Mode votes — clear counts weight which mode the activity belongs to
+    // Mode votes - clear counts weight which mode the activity belongs to
     // when its definitions disagree (e.g. an activity that lists both raid
     // and "other" modes). Only raid + dungeon are valid votes.
     const modeVotes = new Map<number, number>();
@@ -232,7 +232,7 @@ export async function Activities({
     // Personal best: fastest matching clear in the recent paginated set.
     // Not a true lifetime PB (would need full history walk), but covers the
     // typical "show me my fastest recent run" intent and is honest about
-    // it — the BEST stat updates as you set new records.
+    // it - the BEST stat updates as you set new records.
     const durations = runs
       .map((r) => r.durationSeconds)
       .filter((d) => d > 0);
@@ -251,6 +251,6 @@ export async function Activities({
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return <div className="error">Couldn’t load activities: {msg}</div>;
+    return <div className="error">Couldn't load activities: {msg}</div>;
   }
 }

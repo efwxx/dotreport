@@ -12,7 +12,7 @@ export const sections: SectionDef[] = [
   {
     type: "row",
     columns: [
-      // No inline overrides — uses TRACKED_ACTIVITY_* env vars from .env.local.
+      // No inline overrides, uses TRACKED_ACTIVITY_* env vars from .env.local.
       // To track two activities at once, give one section an inline override:
       //   { type: "activity", name: "King's Fall", title: "King's Fall" }
       // Mode auto-detects from the matched activity, so dungeons "just work".
@@ -35,6 +35,8 @@ export const sections: SectionDef[] = [
       // Speedrun.com personal-bests. Uses SPEEDRUN_USERNAME from .env.local
       // unless you pass `username` inline.
       { type: "speedrun", limit: 5 },
+      { type: "loadout" },
+      { type: "clan" },
     ],
   },
 ];

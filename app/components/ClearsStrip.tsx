@@ -1,13 +1,13 @@
 // A camo.report-style horizontal strip of dots.
 // X axis = time (older on the left, newest on the right).
-// Y axis = run duration inverted — faster runs sit higher.
+// Y axis = run duration inverted - faster runs sit higher.
 //
 // Visual markers:
-//   ★ (gold star)  — Low-man clear. Shown on RAID dots with ≤4 players,
+//   ★ (gold star)  - Low-man clear. Shown on RAID dots with ≤4 players,
 //                    and on DUNGEON dots only when cleared SOLO. (A 3-man
 //                    dungeon clear is just "a normal dungeon", so we don't
 //                    star it.)
-//   Soft glow      — "Special" achievement. Shown when:
+//   Soft glow      - "Special" achievement. Shown when:
 //                      - the run was flawless (0 deaths for this character),
 //                      - OR a dungeon was cleared solo.
 //
@@ -31,7 +31,7 @@ type Props = {
   activities: ClearPoint[]; // most-recent-first; we reverse for display.
   variant: "raid" | "dungeon";
   // Optional best-time stat shown next to the CLEARS counter. Caller is
-  // responsible for filtering to the matched activity — undefined hides it.
+  // responsible for filtering to the matched activity - undefined hides it.
   bestDurationSeconds?: number;
 };
 
@@ -45,8 +45,8 @@ function pgcrUrl(variant: "raid" | "dungeon", instanceId: string): string {
   return `https://${host}/pgcr/${instanceId}`;
 }
 
-// "Solo" / "Duo" / "Trio" / "Quad" — only for clears at or below quad-man.
-// Larger clears (full raid teams of 5–6) get no badge.
+// "Solo" / "Duo" / "Trio" / "Quad" - only for clears at or below quad-man.
+// Larger clears (full raid teams of 5-6) get no badge.
 function fireteamLabel(count: number): string | null {
   switch (count) {
     case 1:

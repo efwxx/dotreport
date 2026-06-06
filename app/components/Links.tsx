@@ -8,7 +8,7 @@ import { findPrimaryMembership, platformSlug } from "@/lib/bungie";
 import { sections } from "@/config/site";
 import { CopyPill } from "./CopyPill";
 
-// Whichever account the FIRST hero in config/site.ts displays — that's the
+// Whichever account the FIRST hero in config/site.ts displays - that's the
 // account whose tag the Join Code copies, and whose Bungie.net + Raid Report
 // links the defaults point at. When 2+ heroes exist, each hero owns its own
 // click-to-copy name, so we drop the redundant Join Code pill here.
@@ -16,8 +16,8 @@ const HERO_COUNT = countHeroes(sections);
 const HERO_CFG = findHeroAccountConfig(sections);
 
 // Two "kinds" of pill:
-//   - link  — a normal anchor that opens in a new tab.
-//   - copy  — a button that copies `value` to the clipboard on click.
+//   - link  - a normal anchor that opens in a new tab.
+//   - copy  - a button that copies `value` to the clipboard on click.
 type LinkItem = { label: string; href: string };
 type CopyItem = { label: string; copy: string; copiedLabel?: string };
 type Pill = ({ kind: "link" } & LinkItem) | ({ kind: "copy" } & CopyItem);
@@ -72,7 +72,7 @@ export async function Links() {
   const tag = formatTag(account);
   const defaults: Pill[] = [];
 
-  // Join Code is identity, not a third-party link — keep it even when
+  // Join Code is identity, not a third-party link - keep it even when
   // DISABLE_DEFAULT_LINKS is on. (In multi-hero mode each hero's name
   // handles its own copy, so we still suppress it there.)
   if (!isMultiHero) {
@@ -103,7 +103,7 @@ export async function Links() {
         });
       }
     } catch {
-      // Bungie lookup down — still surface the Last.fm pill if possible.
+      // Bungie lookup down - still surface the Last.fm pill if possible.
       if (lastfmUser) {
         defaults.push({
           kind: "link",

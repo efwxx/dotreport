@@ -40,7 +40,7 @@ npm install
 
 # 2. Create your env file
 cp .env.example .env.local
-#    …then fill in the four required values (see below).
+#    ...then fill in the four required values (see below).
 
 # 3. Run
 npm run dev
@@ -192,12 +192,12 @@ so your editor autocompletes the available fields.
 | Type | Fields | Renders |
 |---|---|---|
 | `hero` | `account?`, `displayName?` | Big card with the equipped emblem as background. Account-aware. With 2+ heroes anywhere in the config, the name itself becomes a click-to-copy target for each card's Bungie tag. |
-| `links` | — | Row of pill links. Defaults (Join Code / Raid Report / Last.fm) follow the first hero's account. Extras come from `EXTRA_LINK_*` env vars. The Join Code pill disappears in multi-hero mode (each hero has its own click-to-copy name instead). |
+| `links` | - | Row of pill links. Defaults (Join Code / Raid Report / Last.fm) follow the first hero's account. Extras come from `EXTRA_LINK_*` env vars. The Join Code pill disappears in multi-hero mode (each hero has its own click-to-copy name instead). |
 | `activity` | `name?`, `mode?`, `title?`, `account?` | Dot-chart strip of 10 most recent clears + lifetime count + **fastest recent clear**. `name` is a substring match (catches every difficulty/reissue). `mode` auto-detects from the matched activity, so dungeons "just work". `account` indexes into `BUNGIE_NAME_<n>`. |
 | `liveActivity` | `account?`, `title?`, `orbitImage?` | **Live in-game activity card.** Shows current activity name, PGCR image, ticking elapsed timer, and fireteam member list when the player is online. Quietly degrades to an `ORBIT` chip (with the orbit image) when out of activity, and to `OFFLINE` when the player isn't logged in. PvP playlist matches show both the map and the playlist (`The Burnout` / `TRIALS OF OSIRIS`). |
 | `pvp` | `mode?`, `title?`, `account?` | **Win/loss dot-chart strip** for a Crucible / Trials / Iron Banner / Gambit playlist. Headline stats: lifetime K/D + win rate. Dots green for wins, red for losses, positioned vertically by K/D. Gambit dots are non-clickable; other modes link to raid.report's PGCR page. |
 | `speedrun` | `username?`, `title?`, `limit?` | **Speedrun.com personal-bests card.** Game cover thumbnails, place badges (gold/silver/bronze for top 3), category, time, date. WRs counter in the header. Uses `SPEEDRUN_API_KEY` if set, else falls back to public API. |
-| `nowPlaying` | — | Last.fm card showing the currently-playing or most-recent track. Live indicator pulses red when actively scrobbling. |
+| `nowPlaying` | - | Last.fm card showing the currently-playing or most-recent track. Live indicator pulses red when actively scrobbling. |
 | `projects` | `title?`, `items[]` | Grid of project cards. Each item: `{ title, description?, href?, tags?, icon? }`. Cards are clickable if `href` is set. |
 | `text` | `title?`, `body` | Free-form text card. Useful for an "About" blurb or attribution. |
 | `row` | `columns[]` | Two-column wrapper. Stacks to one column under 620px. Children can be any other section type. |
@@ -240,12 +240,12 @@ visually and in the hover tooltip:
 | Color | Master difficulty | Dot becomes purple instead of its mode color (green for raids, blue for dungeons). |
 
 Fireteam labels in the tooltip use friendly names: **Solo / Duo / Trio / Quad**
-for 1–4 players; 5–6 player full-team raid clears show no label.
+for 1-4 players; 5-6 player full-team raid clears show no label.
 
 Dots also link out: raid dots go to `raid.report/pgcr/{id}`, dungeon dots
 to `dungeon.report/pgcr/{id}`. PvP / Crucible / Trials / Iron Banner dots
 go to `raid.report/pgcr/{id}` too. **Gambit dots are non-clickable** since
-there's no good public PGCR viewer that handles the mode well — they still
+there's no good public PGCR viewer that handles the mode well - they still
 show their flyout on hover, just don't navigate anywhere.
 
 ### PvP strip indicators
@@ -257,7 +257,7 @@ with a different palette and Y-axis:
 |---|---|
 | Green dot | Win (`standing === 0`). |
 | Red dot   | Loss. |
-| Y position | Per-match K/D, clamped to 0.5–2.5. |
+| Y position | Per-match K/D, clamped to 0.5-2.5. |
 
 Tooltip carries the map name, win/loss pill, K/D/A breakdown, duration,
 and time ago.
@@ -405,7 +405,7 @@ Drop one into your row:
 
 Requires the Bungie account's transitory privacy to be set to "All Users"
 (default for most accounts). When in-game it shows the activity image,
-ticking timer, and fireteam pills — when offline / in orbit it shows a
+ticking timer, and fireteam pills - when offline / in orbit it shows a
 friendly placeholder. The default orbit image ships at `public/orbit.svg`;
 override per-section with `orbitImage: "/your.jpg"`.
 

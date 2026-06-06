@@ -179,7 +179,7 @@ export async function getPersonalBests(
   limit = 5
 ): Promise<SpeedrunPersonalBest[]> {
   const user = encodeURIComponent(username);
-  // Hand-built URL — URLSearchParams encodes commas to %2C and speedrun.com
+  // Hand-built URL - URLSearchParams encodes commas to %2C and speedrun.com
   // drops the embed silently when that happens.
   const path = `/users/${user}/personal-bests?embed=game,category,players`;
 

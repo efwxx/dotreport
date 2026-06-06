@@ -11,7 +11,7 @@ export type ResolvedAccount = { name: string; code: number; index: number };
 // API lookup works (Bungie's API takes an int), then format with this helper
 // anywhere it's shown to the user or copied to the clipboard. Accounts whose
 // numeric code is >= 1000 are unaffected; smaller codes get their leading
-// zeros restored — e.g. `Yura#0618` instead of `Yura#618`.
+// zeros restored - e.g. `Yura#0618` instead of `Yura#618`.
 export function formatTag(account: { name: string; code: number }): string {
   return `${account.name}#${String(account.code).padStart(4, "0")}`;
 }

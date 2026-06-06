@@ -16,7 +16,7 @@ const ORDINAL_SUFFIX: Record<string, string> = {
 };
 
 function ordinal(n: number): string {
-  if (n <= 0) return "—";
+  if (n <= 0) return "-";
   const k = n % 100;
   if (k >= 11 && k <= 13) return `${n}th`;
   const j = n % 10;

@@ -578,6 +578,444 @@ section + section {
   text-overflow: ellipsis;
 }
 
+/* ---------- Clan card ---------- */
+
+.clan-card { gap: 12px; }
+
+.clan-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+  padding: 4px 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.clan-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: #1a1a1f center / cover no-repeat;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Composited clan banner - four mask-coloured layers stacked back-to-front.
+   Taller than the avatar (gonfalon shape) and uses contain so the artwork
+   keeps its aspect ratio at any container size. */
+.clan-banner {
+  position: relative;
+  width: 56px;
+  height: 84px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.clan-banner-layer {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+}
+
+.clan-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.clan-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clan-motto {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clan-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.clan-rank {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+}
+
+/* Founder = gold, Acting Founder = lighter gold, Admin = purple. */
+.clan-rank.rank-5 {
+  color: #fde047;
+  background: rgba(253, 224, 71, 0.14);
+}
+.clan-rank.rank-4 {
+  color: #fcd34d;
+  background: rgba(252, 211, 77, 0.12);
+}
+.clan-rank.rank-3 {
+  color: #c084fc;
+  background: rgba(192, 132, 252, 0.14);
+}
+
+/* ---------- Loadout card ---------- */
+
+.loadout-card { gap: 10px; }
+
+.loadout-class {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.loadout-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.loadout-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+}
+
+.loadout-row.is-empty {
+  opacity: 0.4;
+}
+
+.loadout-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  background-color: #1a1a1f;
+  background-image: var(--icon, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  transition: background-image 0s;
+}
+
+/* When an ornament is equipped, hovering shows the base item art so you can
+   preview what's actually underneath. Falls through to --icon when no
+   --icon-hover is provided (no ornament). */
+.loadout-icon:hover {
+  background-image: var(--icon-hover, var(--icon, none));
+}
+
+/* Exotic items get a gold border + subtle glow, matching how Destiny
+   highlights them in-game. */
+.loadout-icon.is-exotic {
+  border-color: #ceae33;
+  box-shadow: 0 0 0 1px rgba(206, 174, 51, 0.5),
+    0 0 12px rgba(206, 174, 51, 0.18);
+}
+
+/* Masterworked items get a noticeably brighter, more saturated gold glow
+   than exotic alone - the goal is "you can tell at a glance which is
+   masterworked even when both have a gold ring". Using a brighter yellow
+   (#fbbf24 / #fde047) instead of the muted exotic gold (#ceae33) so the two
+   states don't visually collapse into one. */
+.loadout-icon.is-masterworked {
+  border-color: #fbbf24;
+  box-shadow:
+    0 0 0 1px #fbbf24,
+    0 0 16px rgba(251, 191, 36, 0.55),
+    inset 0 0 8px rgba(255, 235, 100, 0.18);
+}
+
+.loadout-icon.is-exotic.is-masterworked {
+  border-color: #fde047;
+  box-shadow:
+    0 0 0 2px #fde047,
+    0 0 22px rgba(253, 224, 71, 0.65),
+    inset 0 0 10px rgba(255, 235, 120, 0.22);
+}
+
+.loadout-icon.empty {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.04) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.loadout-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.loadout-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loadout-sub {
+  font-size: 11px;
+  color: var(--muted);
+  display: inline-flex;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loadout-tier {
+  color: #ceae33;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Section label used in extended mode to separate weapons from armor. */
+.loadout-section-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 4px 2px 4px;
+}
+
+/* New stat row: six icon-chip pairs (Health / Melee / Grenade / Super / Class
+   / Weapons), shown directly under the loadout title. Values are out of 200
+   under the Edge of Fate stat system. Icons come from Bungie's manifest via
+   the DestinyStatDefinition entry. */
+.loadout-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 2px 4px;
+}
+
+.loadout-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  min-width: 0;
+}
+
+.loadout-stat-icon {
+  width: 18px;
+  height: 18px;
+  background: center / contain no-repeat;
+  flex-shrink: 0;
+  filter: brightness(0) invert(1) opacity(0.85);
+}
+
+.loadout-stat-icon.empty {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+
+.loadout-stat-value {
+  color: var(--text);
+}
+
+/* "Show full loadout" trigger - small ghost button under the equipment list
+   in compact mode. Visually understated so it doesn't compete with the
+   actual loadout data. */
+.loadout-show-full {
+  margin-top: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.loadout-show-full:hover {
+  background: #1a1a1f;
+  color: var(--text);
+  border-color: #3a3a44;
+}
+
+/* ---------- Modal overlay ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modal-fade 0.15s ease;
+}
+
+@keyframes modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-panel {
+  position: relative;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 22px 22px 18px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  animation: modal-slide 0.18s ease;
+}
+
+@keyframes modal-slide {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.loadout-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.loadout-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: 24px; /* clear the close button */
+}
+
+.loadout-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Perk / mod bar (modal only) ---------- */
+
+.perk-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.perk-icon {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  cursor: help;
+}
+
+.perk-icon-image {
+  position: absolute;
+  inset: 0;
+  background: center / cover no-repeat;
+  border-radius: 50%;
+}
+
+/* Enhanced perk - DIM's signature gold halo + leading sideways triangle. */
+.perk-icon.is-enhanced {
+  border-color: #ceae33;
+  box-shadow:
+    0 0 0 1px #ceae33,
+    0 0 6px rgba(206, 174, 51, 0.4);
+}
+
+/* Subtle gold tinge on the perk icon itself for enhanced / tier 4-5,
+   matching DIM's slight warm cast. */
+.perk-icon.is-enhanced .perk-icon-image {
+  filter: saturate(1.1) brightness(1.05);
+}
+
 /* ---------- speedrun.com card ---------- */
 
 .speedrun-card { gap: 10px; }
@@ -909,7 +1347,7 @@ button.link-pill {
   box-shadow: 0 0 0 5px rgba(192, 132, 252, 0.22);
 }
 
-/* Static (non-link) dot variant — used for Gambit since there's no
+/* Static (non-link) dot variant - used for Gambit since there's no
    reasonable PGCR viewer to redirect to. Keeps the flyout-on-hover but
    drops the cursor change so the dots don't look clickable. */
 .clears-dot.is-static {
