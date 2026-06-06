@@ -19,13 +19,22 @@ export const sections: SectionDef[] = [
       // To pull from an alt account, add `account: 2` (configure
       // BUNGIE_NAME_2 / BUNGIE_CODE_2 in .env.local first):
       //   { type: "activity", name: "Vault of Glass", account: 2, title: "VoG (Alt)" }
-      { type: "activity" },
+      { type: "activity", name: "Garden of Salvation", title: "GoS" },
       { type: "nowPlaying" },
       // Optional: a live activity card. Shows current activity + elapsed
       // timer + fireteam when the player is in-game; quietly becomes an
       // offline state otherwise. Requires the account's Bungie transitory
       // privacy to be set to "All Users".
       { type: "liveActivity" },
+      { type: "pvp", mode: "gambit", account: 1 },
+      // PvP / Gambit tracker. Mode picks the playlist:
+      //   "crucible" (default), "trials", "ironBanner", "gambit"
+      // { type: "pvp", mode: "trials" },
+      // { type: "pvp", mode: "gambit", title: "Recent Gambit" },
+      //
+      // Speedrun.com personal-bests. Uses SPEEDRUN_USERNAME from .env.local
+      // unless you pass `username` inline.
+      { type: "speedrun", limit: 5 },
     ],
   },
 ];

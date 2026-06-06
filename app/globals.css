@@ -234,6 +234,19 @@ section + section {
   flex-shrink: 0;
 }
 
+/* When two stats sit side-by-side (e.g. BEST + CLEARS on the activity card).
+   Stacks neatly with a thin divider between them. */
+.card-stat-row {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.card-stat-row .card-stat + .card-stat {
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+
 .card-stat-value {
   font-size: 18px;
   font-weight: 600;
@@ -565,6 +578,156 @@ section + section {
   text-overflow: ellipsis;
 }
 
+/* ---------- speedrun.com card ---------- */
+
+.speedrun-card { gap: 10px; }
+
+.speedrun-handle {
+  text-decoration: none;
+  color: var(--text);
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.25);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.speedrun-handle:hover {
+  color: #c084fc;
+  border-bottom-color: #c084fc;
+}
+
+.speedrun-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.speedrun-row { display: flex; }
+
+.speedrun-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    transform 0.15s ease;
+}
+.speedrun-link:hover {
+  border-color: #3a3a44;
+  background: #1a1a1f;
+}
+
+/* Game cover thumbnail (speedrun.com cover-small is usually ~80x108). */
+.speedrun-cover {
+  width: 36px;
+  height: 48px;
+  border-radius: 4px;
+  background: #1a1a1f center / cover no-repeat;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Place badge used as a left chip when no cover art is available. */
+.speedrun-place {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  min-width: 42px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Smaller variant used inside the right-hand meta column on every row. */
+.speedrun-place-pill {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+}
+
+.speedrun-place.place-1,
+.speedrun-place-pill.place-1 {
+  color: #fde047;
+  background: rgba(253, 224, 71, 0.14);
+}
+.speedrun-place.place-2,
+.speedrun-place-pill.place-2 {
+  color: #e2e8f0;
+  background: rgba(226, 232, 240, 0.12);
+}
+.speedrun-place.place-3,
+.speedrun-place-pill.place-3 {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.speedrun-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.speedrun-game {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.speedrun-cat {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.speedrun-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.speedrun-time {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.speedrun-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.speedrun-date {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.speedrun-empty { padding: 12px 8px; }
+
 /* ---------- Free-form text section ---------- */
 
 .text-card {
@@ -744,6 +907,37 @@ button.link-pill {
 }
 .clears-dot.is-master:hover .clears-dot-core {
   box-shadow: 0 0 0 5px rgba(192, 132, 252, 0.22);
+}
+
+/* Static (non-link) dot variant — used for Gambit since there's no
+   reasonable PGCR viewer to redirect to. Keeps the flyout-on-hover but
+   drops the cursor change so the dots don't look clickable. */
+.clears-dot.is-static {
+  cursor: default;
+}
+
+/* PvP variant: green win, red loss. Lives on top of the standard
+   .clears-dot styles so hover/focus/glow rules still apply. */
+.clears-chart.pvp .clears-dot.is-win .clears-dot-core {
+  background: #4ade80;
+}
+.clears-chart.pvp .clears-dot.is-win:hover .clears-dot-core {
+  box-shadow: 0 0 0 5px rgba(74, 222, 128, 0.20);
+}
+.clears-chart.pvp .clears-dot.is-loss .clears-dot-core {
+  background: #f87171;
+}
+.clears-chart.pvp .clears-dot.is-loss:hover .clears-dot-core {
+  box-shadow: 0 0 0 5px rgba(248, 113, 113, 0.22);
+}
+
+.flyout-pill.win {
+  background: rgba(74, 222, 128, 0.16);
+  color: #4ade80;
+}
+.flyout-pill.loss {
+  background: rgba(248, 113, 113, 0.18);
+  color: #f87171;
 }
 
 .clears-dot:hover { transform: scale(1.1); }

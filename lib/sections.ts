@@ -53,6 +53,26 @@ export type SectionDef =
       title?: string;
       account?: number;
     }
+  // PvP / Gambit match tracker. W/L coloured dot strip + lifetime record.
+  //   mode    — "crucible" (default), "trials", "ironBanner", or "gambit".
+  //   title   — card title (defaults to the mode's display name).
+  //   account — 1 (default) or 2+.
+  | {
+      type: "pvp";
+      mode?: "crucible" | "trials" | "ironBanner" | "gambit";
+      title?: string;
+      account?: number;
+    }
+  // speedrun.com personal-best card. Optional.
+  //   username — speedrun.com handle. Falls back to SPEEDRUN_USERNAME env.
+  //   title    — card title.
+  //   limit    — number of PBs to show (defaults to 5).
+  | {
+      type: "speedrun";
+      username?: string;
+      title?: string;
+      limit?: number;
+    }
   // Last.fm now-playing card.
   | { type: "nowPlaying" }
   // Live in-game activity card. Shows current activity, a ticking elapsed

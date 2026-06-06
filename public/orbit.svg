@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="space" cx="50%" cy="120%" r="120%">
+      <stop offset="0%" stop-color="#1d2c4c"/>
+      <stop offset="55%" stop-color="#0a0f25"/>
+      <stop offset="100%" stop-color="#02030a"/>
+    </radialGradient>
+    <linearGradient id="earthShade" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e3a55"/>
+      <stop offset="55%" stop-color="#091a35"/>
+      <stop offset="100%" stop-color="#05111f"/>
+    </linearGradient>
+    <radialGradient id="atmosphere" cx="50%" cy="100%" r="55%">
+      <stop offset="0%" stop-color="#4f88ff" stop-opacity="0"/>
+      <stop offset="75%" stop-color="#4f88ff" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#8fcaff" stop-opacity="0.55"/>
+    </radialGradient>
+    <radialGradient id="aurora1" cx="22%" cy="78%" r="48%">
+      <stop offset="0%" stop-color="#7fff9a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#7fff9a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="aurora2" cx="78%" cy="82%" r="40%">
+      <stop offset="0%" stop-color="#9fffd5" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#9fffd5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="200" height="200" fill="url(#space)"/>
+
+  <g fill="#ffffff">
+    <circle cx="18"  cy="22" r="0.7" opacity="0.85"/>
+    <circle cx="42"  cy="14" r="0.5" opacity="0.65"/>
+    <circle cx="68"  cy="26" r="0.6" opacity="0.7"/>
+    <circle cx="94"  cy="10" r="0.7" opacity="0.9"/>
+    <circle cx="118" cy="36" r="0.5" opacity="0.6"/>
+    <circle cx="146" cy="18" r="0.8" opacity="0.95"/>
+    <circle cx="170" cy="30" r="0.5" opacity="0.7"/>
+    <circle cx="186" cy="12" r="0.7" opacity="0.85"/>
+    <circle cx="28"  cy="58" r="0.5" opacity="0.6"/>
+    <circle cx="56"  cy="48" r="0.6" opacity="0.75"/>
+    <circle cx="82"  cy="62" r="0.4" opacity="0.55"/>
+    <circle cx="108" cy="54" r="0.5" opacity="0.65"/>
+    <circle cx="134" cy="66" r="0.7" opacity="0.85"/>
+    <circle cx="162" cy="52" r="0.5" opacity="0.65"/>
+    <circle cx="184" cy="74" r="0.6" opacity="0.75"/>
+    <circle cx="14"  cy="92" r="0.4" opacity="0.55"/>
+    <circle cx="48"  cy="84" r="0.5" opacity="0.7"/>
+    <circle cx="76"  cy="96" r="0.4" opacity="0.55"/>
+    <circle cx="102" cy="84" r="0.6" opacity="0.75"/>
+  </g>
+
+  <path
+    d="M 0 200 L 0 138 Q 100 84 200 138 L 200 200 Z"
+    fill="url(#earthShade)"/>
+
+  <path
+    d="M -4 142 Q 100 88 204 142 L 204 154 Q 100 100 -4 154 Z"
+    fill="url(#aurora1)"/>
+  <path
+    d="M -4 148 Q 100 92 204 148 L 204 160 Q 100 104 -4 160 Z"
+    fill="url(#aurora2)"/>
+
+  <path
+    d="M 0 200 L 0 138 Q 100 84 200 138 L 200 200 Z"
+    fill="url(#atmosphere)"/>
+
+  <path
+    d="M -4 138 Q 100 84 204 138"
+    fill="none" stroke="#a5d8ff" stroke-opacity="0.55" stroke-width="1.2"/>
+</svg>

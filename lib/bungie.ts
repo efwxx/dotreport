@@ -10,6 +10,42 @@ const BUNGIE_CDN = "https://www.bungie.net";
 // https://bungie-net.github.io/multi/schema_Destiny-HistoricalStats-Definitions-DestinyActivityModeType.html
 export const MODE_RAID = 4;
 export const MODE_DUNGEON = 82;
+// PvP / competitive playlists used by the `pvp` section type. Aggregate
+// "AllPvP" gives the union of Crucible playlists; specific modes drill in.
+export const MODE_ALL_PVP = 5;
+export const MODE_IRON_BANNER = 19;
+export const MODE_GAMBIT = 63;
+export const MODE_TRIALS = 84;
+
+export type PvpModeKey = "crucible" | "trials" | "ironBanner" | "gambit";
+
+export function pvpModeId(key: PvpModeKey): number {
+  switch (key) {
+    case "trials":
+      return MODE_TRIALS;
+    case "ironBanner":
+      return MODE_IRON_BANNER;
+    case "gambit":
+      return MODE_GAMBIT;
+    case "crucible":
+    default:
+      return MODE_ALL_PVP;
+  }
+}
+
+export function pvpModeLabel(key: PvpModeKey): string {
+  switch (key) {
+    case "trials":
+      return "Trials of Osiris";
+    case "ironBanner":
+      return "Iron Banner";
+    case "gambit":
+      return "Gambit";
+    case "crucible":
+    default:
+      return "Crucible";
+  }
+}
 
 type BungieEnvelope<T> = {
   Response: T;
@@ -380,6 +416,352 @@ export async function getLifetimeModeClears(
     }
   }
 
+  return total;
+}
+
+// One PvP / Gambit match summary, as it surfaces from getRecentPvpMatches().
+export type PvpMatch = {
+  instanceId: string;
+  period: string;
+  durationSeconds: number;
+  durationDisplay: string;
+  // standing: 0 = win, 1 = loss for team modes. Higher numbers for FFA.
+  standing: number;
+  win: boolean;
+  kills: number;
+  deaths: number;
+  assists: number;
+  kd: number;
+  // Hash of the activity (typically the map) — resolve via
+  // resolveActivityDefinitions() if you want the display name.
+  referenceHash: number;
+  // Gambit-only stats (populated when present in the activity values). Used
+  // by the PvP strip to switch the Y-axis to guardian kills instead of K/D
+  // for the Gambit variant, since regular K/D is dominated by PvE kills.
+  guardianKills?: number;
+  motesDeposited?: number;
+  invasionKills?: number;
+};
+
+// Recent PvP / Gambit matches for the given mode, merged across characters.
+// Bungie returns wins as standing === 0 in team modes (Trials, IB, Crucible,
+// Gambit). FFA modes use position; we still call standing === 0 a "win"
+// (1st place).
+export async function getRecentPvpMatches(
+  membership: DestinyMembership,
+  characters: Character[],
+  mode: number,
+  limit = 10
+): Promise<PvpMatch[]> {
+  const results = await Promise.all(
+    characters.map((c) => getActivityHistory(membership, c.characterId, mode, 50))
+  );
+
+  const seen = new Map<string, PvpMatch>();
+  for (const entries of results) {
+    for (const entry of entries) {
+      const id = entry.activityDetails.instanceId;
+      if (seen.has(id)) continue;
+      const v = entry.values;
+      const standing = v.standing?.basic.value ?? -1;
+      // Only count matches that produced a standing — skips matchmaking
+      // bailouts and disconnects that Bungie sometimes records with no
+      // useful stats.
+      if (standing < 0) continue;
+      seen.set(id, {
+        instanceId: id,
+        period: entry.period,
+        durationSeconds: v.activityDurationSeconds?.basic.value ?? 0,
+        durationDisplay: v.activityDurationSeconds?.basic.displayValue ?? "",
+        standing,
+        win: standing === 0,
+        kills: v.kills?.basic.value ?? 0,
+        deaths: v.deaths?.basic.value ?? 0,
+        assists: v.assists?.basic.value ?? 0,
+        kd: v.killsDeathsRatio?.basic.value ?? 0,
+        referenceHash: entry.activityDetails.directorActivityHash,
+        guardianKills: v.guardianKills?.basic.value,
+        motesDeposited: v.motesDeposited?.basic.value,
+        invasionKills: v.invasionKills?.basic.value,
+      });
+    }
+  }
+
+  return [...seen.values()]
+    .sort((a, b) => new Date(b.period).getTime() - new Date(a.period).getTime())
+    .slice(0, limit);
+}
+
+// Mode keys as Bungie returns them in the /Stats response. The same mode can
+// appear under multiple names depending on era / endpoint version:
+//   mode 63 (Gambit) ships its bucket as "gambit", NOT "allGambit"
+//     (the latter would be the aggregate of regular Gambit + Gambit Prime,
+//      and only exists when you query a parent mode).
+//   mode 5 (AllPvP) ships as "allPvP".
+//   mode 19 (IronBanner) ships as "ironBanner".
+//   mode 84 (TrialsOfOsiris) ships as "trialsOfOsiris".
+//
+// We list every observed alias per mode and try them in order, then fall
+// back to a case-insensitive scan, then to "whichever single key exists"
+// (when you query one mode, the response always has exactly one bucket).
+const MODE_RESULT_KEYS: Record<number, string[]> = {
+  [MODE_ALL_PVP]: ["allPvP", "pvp"],
+  [MODE_IRON_BANNER]: ["ironBanner"],
+  [MODE_GAMBIT]: ["gambit", "allGambit"],
+  [MODE_TRIALS]: ["trialsOfOsiris"],
+};
+
+function getResultsBucket<T extends object>(
+  results: Record<string, T> | undefined,
+  preferredKeys: string[]
+): T | undefined {
+  if (!results) return undefined;
+  // 1. Exact match on any alias.
+  for (const key of preferredKeys) {
+    if (results[key]) return results[key];
+  }
+  // 2. Case-insensitive match on any alias.
+  const wanted = new Set(preferredKeys.map((k) => k.toLowerCase()));
+  for (const k of Object.keys(results)) {
+    if (wanted.has(k.toLowerCase())) return results[k];
+  }
+  // 3. Single-key fallback. We queried exactly one mode, so the response
+  //    should hold exactly one bucket — grab it regardless of its name.
+  const keys = Object.keys(results);
+  if (keys.length === 1) return results[keys[0]];
+  return undefined;
+}
+
+export type PvpRecord = {
+  wins: number;
+  losses: number;
+  kd: number;
+  // Only populated for Gambit (mode 63). Total guardian-vs-guardian kills
+  // across the lifetime of the player on this mode, summed over characters.
+  guardianKills?: number;
+  motesDeposited?: number;
+  invasionKills?: number;
+  invasions?: number;
+};
+
+// Lifetime W/L for the given PvP mode, summed across characters (Bungie's
+// per-mode account stats endpoint). Adds Gambit-specific extras when mode
+// is Gambit.
+export async function getPvpRecord(
+  membership: DestinyMembership,
+  mode: number
+): Promise<PvpRecord> {
+  const modeKeys = MODE_RESULT_KEYS[mode];
+  if (!modeKeys) return { wins: 0, losses: 0, kd: 0 };
+
+  // Accumulator: we walk every possible bucket location Bungie might have
+  // hidden the data in, summing as we go. Returns true once any path has
+  // produced non-zero activitiesEntered — that's our short-circuit signal.
+  let wins = 0;
+  let entered = 0;
+  let cleared = 0;
+  let totalKills = 0;
+  let totalDeaths = 0;
+  let guardianKills = 0;
+  let motesDeposited = 0;
+  let invasionKills = 0;
+  let invasions = 0;
+
+  type SV = { basic: { value: number } };
+  type PeriodBucket = {
+    activitiesWon?: SV;
+    activitiesEntered?: SV;
+    // Matches actually played to completion. Use this as the win-rate
+    // denominator when present — `activitiesEntered` over-counts because
+    // it includes matchmaking quits and joined-in-progress entries.
+    activitiesCleared?: SV;
+    kills?: SV;
+    deaths?: SV;
+    guardianKills?: SV;
+    motesDeposited?: SV;
+    invasionKills?: SV;
+    invasions?: SV;
+  };
+  type Bucket = { allTime?: PeriodBucket };
+  type Resp = {
+    mergedAllCharacters?: {
+      results?: Record<string, Bucket>;
+      merged?: Bucket;
+    };
+    characters?: Array<{
+      results?: Record<string, Bucket>;
+      merged?: Bucket;
+    }>;
+  };
+
+  const ingest = (b: PeriodBucket | undefined): boolean => {
+    if (!b) return false;
+    const e = b.activitiesEntered?.basic.value ?? 0;
+    if (e === 0) return false;
+    entered += e;
+    cleared += b.activitiesCleared?.basic.value ?? 0;
+    wins += b.activitiesWon?.basic.value ?? 0;
+    totalKills += b.kills?.basic.value ?? 0;
+    totalDeaths += b.deaths?.basic.value ?? 0;
+    guardianKills += b.guardianKills?.basic.value ?? 0;
+    motesDeposited += b.motesDeposited?.basic.value ?? 0;
+    invasionKills += b.invasionKills?.basic.value ?? 0;
+    invasions += b.invasions?.basic.value ?? 0;
+    return true;
+  };
+
+  // Try a few query shapes — Bungie's behavior for the modes/groups
+  // parameters is inconsistent across modes. Order matters: try the most
+  // common shape first, fall back to broader queries.
+  const queryPaths = [
+    `/Destiny2/${membership.membershipType}/Account/${membership.membershipId}/Stats/?modes=${mode}`,
+    `/Destiny2/${membership.membershipType}/Account/${membership.membershipId}/Stats/?modes=${mode}&groups=General`,
+    `/Destiny2/${membership.membershipType}/Account/${membership.membershipId}/Stats/?groups=General`,
+  ];
+
+  for (const path of queryPaths) {
+    try {
+      const data = await bungieFetch<Resp>(path);
+
+      // 1. mergedAllCharacters.results[<mode key>]
+      const fromMergedNamed = getResultsBucket(
+        data.mergedAllCharacters?.results,
+        modeKeys
+      );
+      if (ingest(fromMergedNamed?.allTime)) break;
+
+      // 2. mergedAllCharacters.merged — cross-mode aggregate. When we query
+      //    a single mode this equals results[mode]; populated even when the
+      //    named bucket is missing on some accounts.
+      if (ingest(data.mergedAllCharacters?.merged?.allTime)) break;
+
+      // 3. Sum each character's results[<mode key>].
+      let hit = false;
+      for (const c of data.characters ?? []) {
+        const b = getResultsBucket(c.results, modeKeys);
+        if (ingest(b?.allTime)) hit = true;
+      }
+      if (hit) break;
+
+      // 4. Sum each character's `merged` bucket.
+      for (const c of data.characters ?? []) {
+        if (ingest(c.merged?.allTime)) hit = true;
+      }
+      if (hit) break;
+    } catch {
+      // try the next query shape
+    }
+  }
+
+  const kd = totalDeaths > 0 ? totalKills / totalDeaths : 0;
+  // Prefer `activitiesCleared` for losses since `activitiesEntered` is
+  // polluted by matchmaking quits / DC joins / didn't-stay-to-end entries
+  // which Bungie still counts toward "entered" but never let the player
+  // win or properly lose. For accounts where activitiesCleared isn't
+  // populated, fall back to activitiesEntered.
+  const completed = cleared > 0 ? cleared : entered;
+  const losses = Math.max(0, completed - wins);
+  const record: PvpRecord = { wins, losses, kd };
+  if (mode === MODE_GAMBIT) {
+    record.guardianKills = guardianKills;
+    record.motesDeposited = motesDeposited;
+    record.invasionKills = invasionKills;
+    record.invasions = invasions;
+  }
+  return record;
+}
+
+// PGCR (Post Game Carnage Report). Includes the full per-player stat dump
+// for a single match — including stats like `guardianKills` that get stripped
+// out of the activity-history endpoint's reduced values dict.
+//
+// Lives on a different host than the rest of the Bungie API (stats.bungie.net,
+// not www.bungie.net) and isn't versioned under /Destiny2/Manifest/, so we
+// bypass the bungieFetch wrapper and hit it directly.
+export type PgcrPlayerEntry = {
+  characterId?: string;
+  player?: {
+    destinyUserInfo?: {
+      membershipId?: string;
+      membershipType?: number;
+      bungieGlobalDisplayName?: string;
+      bungieGlobalDisplayNameCode?: number;
+      displayName?: string;
+    };
+  };
+  values?: Record<string, { basic: { value: number; displayValue: string } }>;
+  extended?: {
+    values?: Record<
+      string,
+      { basic: { value: number; displayValue: string } }
+    >;
+  };
+};
+
+export type PgcrReport = {
+  period: string;
+  activityDetails: {
+    instanceId: string;
+    directorActivityHash: number;
+    mode: number;
+  };
+  entries?: PgcrPlayerEntry[];
+};
+
+// Long TTL — PGCRs are frozen the moment a match ends. The point of even
+// using `revalidate` here at all is so Next will refresh if the server is
+// running for >7 days; the data itself never moves.
+export const getPostGameReport = cache(
+  async (instanceId: string): Promise<PgcrReport | null> => {
+    try {
+      const res = await fetch(
+        `https://stats.bungie.net/Platform/Destiny2/Stats/PostGameCarnageReport/${instanceId}/`,
+        {
+          headers: {
+            "X-API-Key": apiKey(),
+            Accept: "application/json",
+          },
+          next: { revalidate: 60 * 60 * 24 * 7 },
+        }
+      );
+      if (!res.ok) return null;
+      const data = (await res.json()) as {
+        Response?: PgcrReport;
+        ErrorCode: number;
+      };
+      if (data.ErrorCode !== 1 || !data.Response) return null;
+      return data.Response;
+    } catch {
+      return null;
+    }
+  }
+);
+
+// Sums a single stat key across the player's entries in a batch of PGCRs.
+// Used by the Gambit card to compute guardian kills, which activity history
+// drops but PGCR exposes.
+export async function sumPgcrStat(
+  instanceIds: string[],
+  membershipId: string,
+  statKey: string,
+  // Concurrency cap. Bungie tolerates a fair amount of parallelism but
+  // batching keeps us well clear of rate limits even on cold cache.
+  concurrency = 8
+): Promise<number> {
+  let total = 0;
+  for (let i = 0; i < instanceIds.length; i += concurrency) {
+    const slice = instanceIds.slice(i, i + concurrency);
+    const pgcrs = await Promise.all(slice.map((id) => getPostGameReport(id)));
+    for (const pgcr of pgcrs) {
+      if (!pgcr?.entries) continue;
+      for (const entry of pgcr.entries) {
+        if (entry.player?.destinyUserInfo?.membershipId !== membershipId) {
+          continue;
+        }
+        total += entry.values?.[statKey]?.basic.value ?? 0;
+      }
+    }
+  }
   return total;
 }
 

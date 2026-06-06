@@ -229,12 +229,24 @@ export async function Activities({
       };
     });
 
+    // Personal best: fastest matching clear in the recent paginated set.
+    // Not a true lifetime PB (would need full history walk), but covers the
+    // typical "show me my fastest recent run" intent and is honest about
+    // it — the BEST stat updates as you set new records.
+    const durations = runs
+      .map((r) => r.durationSeconds)
+      .filter((d) => d > 0);
+    const bestDurationSeconds = durations.length
+      ? Math.min(...durations)
+      : undefined;
+
     return (
       <ClearsStrip
         title={computeTitle(variant, nameFilter)}
         total={total}
         activities={points}
         variant={variant}
+        bestDurationSeconds={bestDurationSeconds}
       />
     );
   } catch (err) {

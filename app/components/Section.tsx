@@ -6,6 +6,8 @@ import { Links } from "./Links";
 import { LiveActivity } from "./LiveActivity";
 import { NowPlaying } from "./NowPlaying";
 import { Projects } from "./Projects";
+import { PvpActivities } from "./PvpActivities";
+import { Speedrun } from "./Speedrun";
 
 // Central section router. Every entry in config/site.ts passes through here,
 // including the children of `row`. Each branch wraps its async widget in its
@@ -43,6 +45,26 @@ export function Section({ def }: { def: SectionDef }) {
       return (
         <Suspense fallback={<div className="card skeleton-card">Loading…</div>}>
           <NowPlaying />
+        </Suspense>
+      );
+    case "pvp":
+      return (
+        <Suspense fallback={<div className="card skeleton-card">Loading…</div>}>
+          <PvpActivities
+            mode={def.mode}
+            titleOverride={def.title}
+            accountOverride={def.account}
+          />
+        </Suspense>
+      );
+    case "speedrun":
+      return (
+        <Suspense fallback={<div className="card skeleton-card">Loading…</div>}>
+          <Speedrun
+            username={def.username}
+            title={def.title}
+            limit={def.limit}
+          />
         </Suspense>
       );
     case "liveActivity":

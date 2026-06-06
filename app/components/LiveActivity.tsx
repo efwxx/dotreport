@@ -8,10 +8,10 @@ type Props = {
   orbitImage?: string;
 };
 
-// Default path. Drop a file at `public/orbit.jpg` (the path served at /orbit.jpg)
-// to populate. If no file is present, the image element silently fails and
-// the layout still works — just a blank box where the image would be.
-const DEFAULT_ORBIT_IMAGE = "/orbit.jpg";
+// Ships an SVG placeholder at `public/orbit.svg` so the orbit card has a real
+// visual out of the box. Override per-section with `orbitImage: "/your.jpg"`
+// to use your own.
+const DEFAULT_ORBIT_IMAGE = "/orbit.svg";
 
 // Card showing the player's current Destiny activity: name, image, elapsed
 // time (ticking client-side), and fireteam. Renders one of four states

@@ -30,6 +30,9 @@ type Props = {
   total: number;
   activities: ClearPoint[]; // most-recent-first; we reverse for display.
   variant: "raid" | "dungeon";
+  // Optional best-time stat shown next to the CLEARS counter. Caller is
+  // responsible for filtering to the matched activity — undefined hides it.
+  bestDurationSeconds?: number;
 };
 
 const X_PAD_PCT = 4;
@@ -76,7 +79,23 @@ function shouldGlow(
   return false;
 }
 
-export function ClearsStrip({ title, total, activities, variant }: Props) {
+function formatBest(s: number): string {
+  if (!s || s <= 0) return "";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
+}
+
+export function ClearsStrip({
+  title,
+  total,
+  activities,
+  variant,
+  bestDurationSeconds,
+}: Props) {
   const points = [...activities].reverse();
 
   const durations = points
@@ -90,9 +109,19 @@ export function ClearsStrip({ title, total, activities, variant }: Props) {
     <div className="card clears-card">
       <div className="card-header">
         <div className="card-title">{title}</div>
-        <div className="card-stat">
-          <span className="card-stat-value">{total.toLocaleString()}</span>
-          <span className="card-stat-label">CLEARS</span>
+        <div className="card-stat-row">
+          {bestDurationSeconds && bestDurationSeconds > 0 && (
+            <div className="card-stat">
+              <span className="card-stat-value">
+                {formatBest(bestDurationSeconds)}
+              </span>
+              <span className="card-stat-label">BEST</span>
+            </div>
+          )}
+          <div className="card-stat">
+            <span className="card-stat-value">{total.toLocaleString()}</span>
+            <span className="card-stat-label">CLEARS</span>
+          </div>
         </div>
       </div>
 

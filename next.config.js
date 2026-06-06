@@ -7,6 +7,8 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "www.bungie.net" },
       { protocol: "https", hostname: "lastfm.freetls.fastly.net" },
+      // speedrun.com hosts cover art on www.speedrun.com under /static/game/
+      { protocol: "https", hostname: "www.speedrun.com" },
     ],
   },
 };
