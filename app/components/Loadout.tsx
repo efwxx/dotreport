@@ -3,10 +3,12 @@ import {
   cdn,
   findPrimaryMembership,
   getLoadout,
+  resolveItemTileOverlays,
   resolveStatDefinition,
   STAT_HASHES,
   STAT_MAX,
   STAT_ORDER,
+  type ItemTileOverlays,
   type LoadoutSlot,
   type LoadoutStats,
   type StatKey,
@@ -68,10 +70,13 @@ export async function Loadout({
   }
 
   // Resolve stat icons via the Bungie manifest. All six hashes are stable;
-  // both the lookup and the underlying fetch are cached.
-  const statDefs = await Promise.all(
-    STAT_ORDER.map((key) => resolveStatDefinition(STAT_HASHES[key]))
-  );
+  // both the lookup and the underlying fetch are cached. The tile overlays
+  // (gear tier pips, crafted/enhanced badges) come from the same manifest
+  // and are equally cacheable.
+  const [statDefs, tileOverlays] = await Promise.all([
+    Promise.all(STAT_ORDER.map((key) => resolveStatDefinition(STAT_HASHES[key]))),
+    resolveItemTileOverlays(),
+  ]);
   const statRow = STAT_ORDER.map((key, i) => {
     const def = statDefs[i];
     return {
@@ -129,18 +134,18 @@ export async function Loadout({
           {subclass.length > 0 && (
             <>
               <div className="loadout-section-label">Subclass</div>
-              <LoadoutSlotList items={subclass} showPlugs />
+              <LoadoutSlotList items={subclass} overlays={tileOverlays} showPlugs />
             </>
           )}
           <div className="loadout-section-label">Weapons</div>
-          <LoadoutSlotList items={weapons} showPlugs />
+          <LoadoutSlotList items={weapons} overlays={tileOverlays} showPlugs />
           <div className="loadout-section-label">Armor</div>
-          <LoadoutSlotList items={armorAll} showPlugs />
+          <LoadoutSlotList items={armorAll} overlays={tileOverlays} showPlugs />
         </>
       ) : (
         <>
           {compactItems.length > 0 && (
-            <LoadoutSlotList items={compactItems} />
+            <LoadoutSlotList items={compactItems} overlays={tileOverlays} />
           )}
           <LoadoutModal>
             <FullLoadoutPanel
@@ -151,6 +156,7 @@ export async function Loadout({
               armor={armorAll}
               subclass={subclass}
               statRow={statRow}
+              overlays={tileOverlays}
             />
           </LoadoutModal>
         </>
@@ -217,46 +223,94 @@ function iconStyle(
 
 function LoadoutSlotList({
   items,
+  overlays,
   showPlugs = false,
 }: {
   items: Array<{ slot: LoadoutSlot; label: string }>;
+  overlays: ItemTileOverlays;
   showPlugs?: boolean;
 }) {
   return (
     <ul className="loadout-list">
-      {items.map((s) => (
-        <li
-          key={s.slot.itemHash}
-          className={`loadout-row ${s.slot.isExotic ? "is-exotic" : ""}`}
-        >
-          <div
-            className={[
-              "loadout-icon",
-              s.slot.isExotic ? "is-exotic" : "",
-              s.slot.isMasterworked ? "is-masterworked" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            style={iconStyle(s.slot.icon, s.slot.ornamentIcon)}
-            title={s.slot.ornamentIcon ? "Hover to see base icon" : undefined}
-            aria-hidden
-          />
-          <div className="loadout-info">
-            <div className="loadout-name" title={s.slot.name}>
-              {s.slot.name}
-            </div>
-            <div className="loadout-sub">
-              {s.slot.typeName || s.label}
-              {s.slot.isExotic && (
-                <span className="loadout-tier">· Exotic</span>
+      {items.map((s) => {
+        // Composite the tile exactly like the game / DIM: item art at the
+        // bottom, then the seasonal watermark, then Bungie's official
+        // overlay PNGs (gear-tier pips, the red crafted-corner background
+        // strip, and the crafted / enhanced badge) stacked in DOM order.
+        const tierOverlay =
+          s.slot.gearTier > 0
+            ? overlays.gearTierOverlays[s.slot.gearTier - 1] ?? null
+            : null;
+        const badgeOverlay = s.slot.isCrafted
+          ? overlays.craftedOverlay
+          : s.slot.isEnhanced
+            ? overlays.enhancedOverlay
+            : null;
+        return (
+          <li
+            key={s.slot.itemHash}
+            className={`loadout-row ${s.slot.isExotic ? "is-exotic" : ""}`}
+          >
+            <div
+              className={[
+                "loadout-icon",
+                s.slot.isExotic ? "is-exotic" : "",
+                s.slot.isMasterworked ? "is-masterworked" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={iconStyle(s.slot.icon, s.slot.ornamentIcon)}
+              title={
+                s.slot.ornamentIcon ? "Hover to see base icon" : undefined
+              }
+              aria-hidden
+            >
+              {s.slot.watermarkIcon && (
+                <span
+                  className="loadout-icon-layer"
+                  style={{ backgroundImage: `url(${s.slot.watermarkIcon})` }}
+                />
+              )}
+              {tierOverlay && (
+                <span
+                  className="loadout-icon-layer"
+                  title={`Gear tier ${s.slot.gearTier}`}
+                  style={{ backgroundImage: `url(${tierOverlay})` }}
+                />
+              )}
+              {badgeOverlay && overlays.craftedBackground && (
+                <span
+                  className="loadout-icon-layer"
+                  style={{
+                    backgroundImage: `url(${overlays.craftedBackground})`,
+                  }}
+                />
+              )}
+              {badgeOverlay && (
+                <span
+                  className="loadout-icon-layer"
+                  title={s.slot.isCrafted ? "Crafted" : "Enhanced"}
+                  style={{ backgroundImage: `url(${badgeOverlay})` }}
+                />
               )}
             </div>
-            {showPlugs && s.slot.plugs.length > 0 && (
-              <PerkBar plugs={s.slot.plugs} />
-            )}
-          </div>
-        </li>
-      ))}
+            <div className="loadout-info">
+              <div className="loadout-name" title={s.slot.name}>
+                {s.slot.name}
+              </div>
+              <div className="loadout-sub">
+                {s.slot.typeName || s.label}
+                {s.slot.isExotic && (
+                  <span className="loadout-tier">· Exotic</span>
+                )}
+              </div>
+              {showPlugs && s.slot.plugs.length > 0 && (
+                <PerkBar plugs={s.slot.plugs} />
+              )}
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -300,6 +354,7 @@ function FullLoadoutPanel({
   armor,
   subclass,
   statRow,
+  overlays,
 }: {
   title: string;
   className: string;
@@ -313,6 +368,7 @@ function FullLoadoutPanel({
     icon: string | null;
     name: string;
   }>;
+  overlays: ItemTileOverlays;
 }) {
   return (
     <div className="loadout-modal">
@@ -331,15 +387,15 @@ function FullLoadoutPanel({
       {subclass.length > 0 && (
         <>
           <div className="loadout-section-label">Subclass</div>
-          <LoadoutSlotList items={subclass} showPlugs />
+          <LoadoutSlotList items={subclass} overlays={overlays} showPlugs />
         </>
       )}
 
       <div className="loadout-section-label">Weapons</div>
-      <LoadoutSlotList items={weapons} showPlugs />
+      <LoadoutSlotList items={weapons} overlays={overlays} showPlugs />
 
       <div className="loadout-section-label">Armor</div>
-      <LoadoutSlotList items={armor} showPlugs />
+      <LoadoutSlotList items={armor} overlays={overlays} showPlugs />
     </div>
   );
 }

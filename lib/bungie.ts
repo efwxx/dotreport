@@ -1199,8 +1199,18 @@ export type InventoryItemDefinition = {
     tierType?: number;
     tierTypeName?: string;
     bucketTypeHash?: number;
+    // Present only on craftable weapons - points at the crafting recipe
+    // item. Used to tell shaped weapons apart from enhanced ones, since
+    // Bungie sets the Crafted state bit on both.
+    recipeItemHash?: number;
   };
   iconWatermark?: string;
+  // Per-version watermark overlays (seasonal badge in the icon's top-left).
+  // Indexed by the item instance's versionNumber; falls back to
+  // iconWatermark when the version isn't represented.
+  quality?: {
+    displayVersionWatermarkIcons?: string[];
+  };
   flavorText?: string;
   // Perk / plug fields, populated for socket plugs only.
   plug?: {
@@ -1249,6 +1259,48 @@ export const resolveInventoryItem = cache(
       );
     } catch {
       return null;
+    }
+  }
+);
+
+// Bungie's official item-tile overlay art (the same PNGs the game and DIM
+// composite over item icons): gear-tier diamond pips, the red "shaped"
+// crafted icon, the gold enhanced icon, and the red corner background strip
+// both badges sit on. Single-row manifest table, hash 1.
+export type ItemTileOverlays = {
+  // Indexed by gearTier - 1 (tier 1 => [0] ... tier 5 => [4]).
+  gearTierOverlays: Array<string | null>;
+  craftedOverlay: string | null;
+  enhancedOverlay: string | null;
+  craftedBackground: string | null;
+};
+
+export const resolveItemTileOverlays = cache(
+  async (): Promise<ItemTileOverlays> => {
+    type ConstantsDef = {
+      gearTierOverlayImagePaths?: string[];
+      craftedOverlayPath?: string;
+      enhancedItemOverlayPath?: string;
+      craftedBackgroundPath?: string;
+    };
+    try {
+      const def = await bungieFetch<ConstantsDef>(
+        `/Destiny2/Manifest/DestinyInventoryItemConstantsDefinition/1/`,
+        { cacheSeconds: 60 * 60 * 24 }
+      );
+      return {
+        gearTierOverlays: (def.gearTierOverlayImagePaths ?? []).map(cdn),
+        craftedOverlay: cdn(def.craftedOverlayPath),
+        enhancedOverlay: cdn(def.enhancedItemOverlayPath),
+        craftedBackground: cdn(def.craftedBackgroundPath),
+      };
+    } catch {
+      return {
+        gearTierOverlays: [],
+        craftedOverlay: null,
+        enhancedOverlay: null,
+        craftedBackground: null,
+      };
     }
   }
 );
@@ -1522,6 +1574,20 @@ export type LoadoutSlot = {
   // armor (energy capacity 10) and weapons with their masterwork complete.
   // Drives the gold glow around the icon.
   isMasterworked: boolean;
+  // Crafted weapons (ItemState.Crafted, bit 8). Pre-promotion to masterwork
+  // they still get a distinct "shaped" badge in the UI.
+  isCrafted: boolean;
+  // True for enhanced weapons: the Crafted state bit is set but the weapon
+  // has no crafting recipe (enhancing a non-craftable weapon converts it
+  // to the crafting system internally). Mutually exclusive with isCrafted.
+  isEnhanced: boolean;
+  // Edge of Fate's per-item gear tier (1-5). 0 means the item is from
+  // before the tier system shipped (a "non-tiered" weapon / armor piece).
+  gearTier: number;
+  // Seasonal watermark overlay (the small badge in the icon's top-left).
+  // Bungie ships these as full-bleed transparent PNGs sized to the icon,
+  // so renderers just stack it over the item art.
+  watermarkIcon: string | null;
   // Equipped perks / mods, ordered as they sit on the item. Empty for items
   // whose sockets we couldn't resolve. Used by the modal - kept off the
   // compact card so it stays small.
@@ -1531,9 +1597,9 @@ export type LoadoutSlot = {
   ornamentIcon?: string | null;
 };
 
-// DestinyItemState flags. We only care about Masterwork right now but
-// document the rest so the bitmask check is self-explanatory.
+// DestinyItemState flags. Bit 4 = Masterwork, bit 8 = Crafted.
 const ITEM_STATE_MASTERWORK = 4;
+const ITEM_STATE_CRAFTED = 8;
 
 export type LoadoutStats = {
   health: number;
@@ -1575,6 +1641,14 @@ export async function getLoadout(
     itemHash?: number;
     itemInstanceId?: string;
     bucketHash?: number;
+    // Index into the def's quality.displayVersionWatermarkIcons - selects
+    // which seasonal watermark this particular drop carries.
+    versionNumber?: number;
+    // DestinyItemState bitmask (locked / tracked / masterwork / crafted).
+    // NOTE: this lives on the equipment item entry (component 205), NOT on
+    // the instance component (300) - reading it off the instance silently
+    // yields 0 for everything.
+    state?: number;
   };
   type Socket = {
     plugHash?: number;
@@ -1596,8 +1670,10 @@ export async function getLoadout(
         data?: Record<
           string,
           {
-            state?: number;
             energy?: { energyCapacity?: number };
+            // Edge of Fate's weapon/armor tier (1-5). Absent on pre-EoF
+            // items, which we treat as "non-tiered".
+            gearTier?: number;
           }
         >;
       };
@@ -1643,13 +1719,16 @@ export async function getLoadout(
   );
 
   // Resolve every unique plug hash across every equipped item up front. One
-  // batched fetch per unique plug; cached for 24h after.
+  // batched fetch per unique plug; cached for 24h after. Includes invisible
+  // sockets - the armor 3.0 masterwork socket is flagged invisible but we
+  // still need its def to read the tier off `investmentStats`. Visibility
+  // filtering happens later in `buildPlugs` when assembling the perk list.
   const allPlugHashes = new Set<number>();
   for (const e of equipment) {
     if (!e.itemInstanceId) continue;
     const sockets = socketsData[e.itemInstanceId]?.sockets ?? [];
     for (const s of sockets) {
-      if (s.plugHash && s.isVisible !== false) {
+      if (s.plugHash) {
         allPlugHashes.add(s.plugHash);
       }
     }
@@ -1780,6 +1859,40 @@ export async function getLoadout(
     return 0;
   };
 
+  // Enhanced-plug census for a weapon's sockets. `hasEnhancedIntrinsic`
+  // means the intrinsic socket holds an Enhanced frame ("Enhanced
+  // Intrinsic" in the manifest) - that's what DIM keys both its "enhanced"
+  // badge and the crafted-masterwork promotion on. `enhancedPerkCount`
+  // counts enhanced rolls in the remaining sockets.
+  //
+  // Category naming gotcha: Bungie files weapon *trait perks* under the
+  // "frames" plug category, while the actual frame intrinsic lives under
+  // "intrinsics". Only the latter marks a weapon as enhanced - a tiered
+  // (T4/T5) weapon rolls Enhanced Traits in its "frames" sockets while its
+  // intrinsic stays a plain non-enhanceable "Intrinsic", and it must NOT
+  // get the enhanced badge.
+  const enhancedSocketInfo = (
+    instanceId: string | undefined
+  ): { hasEnhancedIntrinsic: boolean; enhancedPerkCount: number } => {
+    let hasEnhancedIntrinsic = false;
+    let enhancedPerkCount = 0;
+    if (!instanceId) return { hasEnhancedIntrinsic, enhancedPerkCount };
+    const sockets = socketsData[instanceId]?.sockets ?? [];
+    for (const s of sockets) {
+      if (!s.plugHash) continue;
+      const def = plugDefs.get(s.plugHash);
+      if (!def) continue;
+      if (!isEnhancedPlug(def)) continue;
+      const cat = def.plug?.plugCategoryIdentifier?.toLowerCase() ?? "";
+      if (cat.includes("intrinsic")) {
+        hasEnhancedIntrinsic = true;
+      } else {
+        enhancedPerkCount++;
+      }
+    }
+    return { hasEnhancedIntrinsic, enhancedPerkCount };
+  };
+
   const toSlot = (
     e: EquipItem,
     def: InventoryItemDefinition | null
@@ -1790,19 +1903,48 @@ export async function getLoadout(
     const instance = e.itemInstanceId
       ? instancesData[e.itemInstanceId]
       : undefined;
-    const state = instance?.state ?? 0;
+    const state = e.state ?? 0;
     const plugs = buildPlugs(e.itemInstanceId, isExotic);
 
-    // Combine the canonical state-bit signal (still authoritative for
-    // weapons and exotic armor) with the armor-3.0 tier check above for
-    // legendary armor where the state bit is no longer set.
+    // Three-signal masterwork detection (matches DIM):
+    //   - state bit: the canonical signal for weapons (tiered and untiered
+    //     alike) and exotic armor.
+    //   - armor 3.0 tier: legendary armor where Bungie no longer flips the
+    //     state bit; we read the V460 masterwork plug's conditional stat.
+    //   - crafted-weapon enhanced promotion: a crafted weapon with an
+    //     enhanced intrinsic + 2+ enhanced perks reads as masterworked even
+    //     when it hasn't yet earned the state bit.
     const masterworkedByState =
       (state & ITEM_STATE_MASTERWORK) === ITEM_STATE_MASTERWORK;
     const isArmor = ARMOR_BUCKETS.has(e.bucketHash);
+    // Bungie sets the Crafted state bit on BOTH shaped weapons and
+    // enhanced ones (enhancing internally converts the weapon to the
+    // crafting system). DIM's disambiguation: only weapons with a crafting
+    // recipe can actually be shaped, so crafted-bit + no recipe = enhanced.
+    const hasCraftedBit = (state & ITEM_STATE_CRAFTED) === ITEM_STATE_CRAFTED;
+    const isCraftable = Boolean(def.inventory?.recipeItemHash);
+    const isCrafted = hasCraftedBit && isCraftable;
+    const enhanced = hasCraftedBit && !isCraftable;
+    const enhancedInfo = enhancedSocketInfo(e.itemInstanceId);
+    // Crafted/enhanced-weapon masterwork promotion (mirrors DIM): an
+    // enhanced intrinsic plus 2+ enhanced perks is the crafting-system
+    // equivalent of a tier-10 masterwork even before the state bit flips.
     const masterworked =
       masterworkedByState ||
       (isArmor &&
-        armorMasterworkTier(e.itemInstanceId) >= ARMOR_3_MASTERWORK_TIER);
+        armorMasterworkTier(e.itemInstanceId) >= ARMOR_3_MASTERWORK_TIER) ||
+      (hasCraftedBit &&
+        enhancedInfo.hasEnhancedIntrinsic &&
+        enhancedInfo.enhancedPerkCount >= 2);
+
+    // Seasonal watermark: prefer the per-version icon (reprised weapons
+    // carry the watermark of the season they actually dropped in), fall
+    // back to the def-level watermark.
+    const versionedWatermark =
+      e.versionNumber !== undefined
+        ? def.quality?.displayVersionWatermarkIcons?.[e.versionNumber]
+        : undefined;
+    const watermarkIcon = cdn(versionedWatermark || def.iconWatermark);
 
     return {
       bucketHash: e.bucketHash,
@@ -1816,6 +1958,10 @@ export async function getLoadout(
       tierType: tier,
       isExotic,
       isMasterworked: masterworked,
+      isCrafted,
+      isEnhanced: enhanced,
+      gearTier: instance?.gearTier ?? 0,
+      watermarkIcon,
       plugs,
       ornamentIcon: findOrnamentIcon(e.itemInstanceId),
     };

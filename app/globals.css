@@ -736,6 +736,9 @@ section + section {
   border: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
   transition: background-image 0s;
+  /* Clip the watermark / pip / crafted overlay layers to the tile's
+     rounded corners. */
+  overflow: hidden;
 }
 
 /* When an ornament is equipped, hovering shows the base item art so you can
@@ -804,17 +807,31 @@ section + section {
 .loadout-sub {
   font-size: 11px;
   color: var(--muted);
-  display: inline-flex;
-  gap: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
 }
 
 .loadout-tier {
   color: #ceae33;
   font-weight: 700;
   letter-spacing: 0.02em;
+}
+
+/* Full-bleed tile overlay layer. Bungie authors all of its item-tile art
+   (seasonal watermark, gear-tier pips, crafted/enhanced corner badges and
+   their red background strip) as transparent PNGs at the icon's exact
+   size, so every layer is just stacked edge-to-edge in DOM order - same
+   compositing the game and DIM do. */
+.loadout-icon-layer {
+  position: absolute;
+  inset: 0;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
 }
 
 /* Section label used in extended mode to separate weapons from armor. */
