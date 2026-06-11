@@ -25,6 +25,11 @@ body {
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Guard against any descendant that briefly overflows its column on small
+     viewports (e.g. the 6-chip stat row, long names with nowrap, etc.). The
+     page itself is already max-width 760 + auto margins, so this just keeps
+     the body from getting wider than the viewport. */
+  overflow-x: clip;
 }
 
 a {
@@ -830,8 +835,9 @@ section + section {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   padding: 6px 2px 4px;
+  flex-wrap: wrap;
 }
 
 .loadout-stat-chip {
@@ -844,6 +850,7 @@ section + section {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .loadout-stat-icon {

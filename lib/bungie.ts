@@ -1207,6 +1207,14 @@ export type InventoryItemDefinition = {
     plugCategoryHash?: number;
     plugCategoryIdentifier?: string;
   };
+  // Stat investments declared by the plug. The armor 3.0 masterwork plug
+  // (plugCategoryHash 2198080209) encodes its current tier as the value of
+  // the single `isConditionallyActive` entry here.
+  investmentStats?: Array<{
+    statTypeHash: number;
+    value: number;
+    isConditionallyActive?: boolean;
+  }>;
   traitIds?: string[];
   // Emblem-specific fields, populated for emblem items only.
   secondaryIcon?: string;
@@ -1658,7 +1666,12 @@ export async function getLoadout(
   // categories, AND masterwork plugs (the diamond-bordered "armor is
   // masterworked" indicator is on every fully-leveled armor piece and
   // just adds noise to the perk bar).
-  const skipCategories = [
+  //
+  // "intrinsics" is skipped for non-exotic items only — on exotic armor /
+  // weapons, the intrinsic socket IS the exotic perk (Spirit of X / Y on
+  // exotic class items, the exotic intrinsic on other slots) and we want
+  // it surfaced.
+  const skipCategoriesBase = [
     "shader",
     "ornament",
     "skin",
@@ -1668,12 +1681,17 @@ export async function getLoadout(
     "crafting",
     "masterworks",
     "masterwork",
-    "intrinsics",
   ];
 
-  const buildPlugs = (instanceId: string | undefined): SlotPlug[] => {
+  const buildPlugs = (
+    instanceId: string | undefined,
+    isExoticItem: boolean
+  ): SlotPlug[] => {
     if (!instanceId) return [];
     const sockets = socketsData[instanceId]?.sockets ?? [];
+    const skipCategories = isExoticItem
+      ? skipCategoriesBase
+      : [...skipCategoriesBase, "intrinsics"];
     const out: SlotPlug[] = [];
     for (const s of sockets) {
       if (!s.plugHash || s.isVisible === false) continue;
@@ -1730,9 +1748,13 @@ export async function getLoadout(
     return null;
   };
 
-  // Armor bucket set - used to gate the energy-capacity check below since
-  // weapons don't have an energy field. (Weapons rely on the state bit
-  // exclusively.)
+  // Armor 3.0 masterwork detection (mirrors DIM, see
+  // src/app/inventory/store/masterwork.ts on the DestinyItemManager repo):
+  // every armor 3.0 piece has a socket whose equipped plug carries the
+  // V460PlugsArmorMasterworks plugCategoryHash (2198080209). The current
+  // masterwork tier is encoded as the `value` of the single investmentStats
+  // entry flagged `isConditionallyActive`. Tier 5 = fully masterworked;
+  // tier 0 (no upgrade applied) is the un-masterworked state.
   const ARMOR_BUCKETS = new Set<number>([
     BUCKET_HELMET,
     BUCKET_GAUNTLETS,
@@ -1740,6 +1762,23 @@ export async function getLoadout(
     BUCKET_LEG,
     BUCKET_CLASS_ARMOR,
   ]);
+  const V460_PLUGS_ARMOR_MASTERWORKS = 2198080209;
+  const ARMOR_3_MASTERWORK_TIER = 5;
+  const armorMasterworkTier = (
+    instanceId: string | undefined
+  ): number => {
+    if (!instanceId) return 0;
+    const sockets = socketsData[instanceId]?.sockets ?? [];
+    for (const s of sockets) {
+      if (!s.plugHash) continue;
+      const def = plugDefs.get(s.plugHash);
+      if (!def) continue;
+      if (def.plug?.plugCategoryHash !== V460_PLUGS_ARMOR_MASTERWORKS) continue;
+      const tierStat = def.investmentStats?.find((st) => st.isConditionallyActive);
+      return tierStat?.value ?? 0;
+    }
+    return 0;
+  };
 
   const toSlot = (
     e: EquipItem,
@@ -1747,26 +1786,23 @@ export async function getLoadout(
   ): LoadoutSlot | undefined => {
     if (!e.itemHash || !def || e.bucketHash === undefined) return undefined;
     const tier = def.inventory?.tierType ?? 0;
+    const isExotic = tier === TIER_EXOTIC;
     const instance = e.itemInstanceId
       ? instancesData[e.itemInstanceId]
       : undefined;
     const state = instance?.state ?? 0;
-    const energyCapacity = instance?.energy?.energyCapacity ?? 0;
-    const plugs = buildPlugs(e.itemInstanceId);
+    const plugs = buildPlugs(e.itemInstanceId, isExotic);
 
-    // Masterwork detection. Two definitive signals - no plug-category
-    // guessing here, because most armor pieces have a "masterwork" plug
-    // socket regardless of tier and a category-substring check returns true
-    // for every armor piece in the game.
-    //
-    //   1. Bit 4 on `state` (ItemState.Masterwork). Authoritative for
-    //      weapons; sometimes set on armor too.
-    //   2. Armor only: `energy.energyCapacity === 10`. That's the literal
-    //      Bungie definition of "this armor piece is masterworked".
-    const isArmor = ARMOR_BUCKETS.has(e.bucketHash);
+    // Combine the canonical state-bit signal (still authoritative for
+    // weapons and exotic armor) with the armor-3.0 tier check above for
+    // legendary armor where the state bit is no longer set.
     const masterworkedByState =
       (state & ITEM_STATE_MASTERWORK) === ITEM_STATE_MASTERWORK;
-    const masterworkedByEnergy = isArmor && energyCapacity >= 10;
+    const isArmor = ARMOR_BUCKETS.has(e.bucketHash);
+    const masterworked =
+      masterworkedByState ||
+      (isArmor &&
+        armorMasterworkTier(e.itemInstanceId) >= ARMOR_3_MASTERWORK_TIER);
 
     return {
       bucketHash: e.bucketHash,
@@ -1778,8 +1814,8 @@ export async function getLoadout(
         : null,
       typeName: def.itemTypeDisplayName,
       tierType: tier,
-      isExotic: tier === TIER_EXOTIC,
-      isMasterworked: masterworkedByState || masterworkedByEnergy,
+      isExotic,
+      isMasterworked: masterworked,
       plugs,
       ornamentIcon: findOrnamentIcon(e.itemInstanceId),
     };
