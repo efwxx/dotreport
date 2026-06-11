@@ -239,7 +239,12 @@ export const getProfile = cache(
     const data = await bungieFetch<{
       characters: { data: Record<string, Character> };
     }>(
-      `/Destiny2/${membership.membershipType}/Profile/${membership.membershipId}/?components=200`
+      `/Destiny2/${membership.membershipType}/Profile/${membership.membershipId}/?components=200`,
+      // Short TTL so the Hero card's active character (and therefore the
+      // displayed class) flips within an AutoRefresh tick when the user
+      // swaps characters in-game. `mostRecentCharacter` is picked by
+      // dateLastPlayed, which Bungie updates the moment a character logs in.
+      { cacheSeconds: 15 }
     );
     const characters = Object.values(data.characters.data);
     if (!characters.length) throw new Error("Profile has no characters");
@@ -850,44 +855,65 @@ export type EmblemDefinition = {
 
 // Look up a player's display name + tag by their Destiny membership id.
 // Used to fill in missing names on fireteam members - Bungie's transitory
-// `partyMembers[].displayName` ships blank for many accounts, especially
-// on the freshly-created Bungie Name system. Hitting the User endpoint
-// once per missing member gets us the proper "Name#0000" tag. Cached for
-// 24h since this changes very rarely.
+// `partyMembers[].displayName` ships blank for most accounts.
+//
+// Uses LinkedProfiles (not GetMembershipDataById, which expects a Bungie.net
+// ID - feeding it a Destiny id silently 404s and is why every fireteam
+// member used to render as "Guardian"). LinkedProfiles takes a Destiny
+// membership id of any platform with `membershipType=-1` and returns every
+// linked Destiny profile plus the bnet account, each carrying the Bungie
+// Global Display Name + 4-digit code. Cached 24h since names rarely change.
 export const resolvePlayerInfo = cache(
   async (membershipId: string): Promise<string | null> => {
     try {
+      type Profile = {
+        bungieGlobalDisplayName?: string;
+        bungieGlobalDisplayNameCode?: number;
+        displayName?: string;
+        dateLastPlayed?: string;
+      };
       type Resp = {
-        bungieNetUser?: { displayName?: string };
-        destinyMemberships?: Array<{
-          bungieGlobalDisplayName?: string;
-          bungieGlobalDisplayNameCode?: number;
-          displayName?: string;
-        }>;
+        profiles?: Profile[];
+        bnetMembership?: Profile;
+        profilesWithErrors?: Array<{ infoCard?: Profile }>;
       };
       const data = await bungieFetch<Resp>(
-        // membershipType -1 = "All Memberships" - Bungie figures out the
-        // correct platform for us.
-        `/User/GetMembershipDataById/${membershipId}/-1/`,
+        `/Destiny2/-1/Profile/${membershipId}/LinkedProfiles/?getAllMemberships=true`,
         { cacheSeconds: 60 * 60 * 24 }
       );
-      // Prefer Bungie Global Display Name (the cross-platform tag).
-      const mem = data.destinyMemberships?.find(
-        (m) => m.bungieGlobalDisplayName && m.bungieGlobalDisplayNameCode
-      );
-      if (mem?.bungieGlobalDisplayName) {
-        const code = String(mem.bungieGlobalDisplayNameCode ?? 0).padStart(
+      const candidates: Profile[] = [
+        ...(data.profiles ?? []),
+        ...(data.profilesWithErrors ?? []).flatMap((p) =>
+          p.infoCard ? [p.infoCard] : []
+        ),
+        ...(data.bnetMembership ? [data.bnetMembership] : []),
+      ];
+      // Prefer the most-recently-played profile that carries a Bungie Global
+      // Display Name + code. Cross-save merges everything onto one tag so any
+      // profile usually works, but sorting by dateLastPlayed picks the live
+      // account in the rare unmerged case.
+      const tagged = candidates
+        .filter(
+          (p) => p.bungieGlobalDisplayName && p.bungieGlobalDisplayNameCode
+        )
+        .sort((a, b) => {
+          const ad = a.dateLastPlayed ? Date.parse(a.dateLastPlayed) : 0;
+          const bd = b.dateLastPlayed ? Date.parse(b.dateLastPlayed) : 0;
+          return bd - ad;
+        });
+      const best = tagged[0];
+      if (best?.bungieGlobalDisplayName) {
+        const code = String(best.bungieGlobalDisplayNameCode ?? 0).padStart(
           4,
           "0"
         );
-        return `${mem.bungieGlobalDisplayName}#${code}`;
+        return `${best.bungieGlobalDisplayName}#${code}`;
       }
-      // Fall back to legacy platform display name or BungieNet handle.
-      const legacy = data.destinyMemberships?.[0]?.displayName?.trim();
-      if (legacy) return legacy;
-      const bnet = data.bungieNetUser?.displayName?.trim();
-      if (bnet) return bnet;
-      return null;
+      // Fall back to any legacy platform display name we can find.
+      const legacy = candidates
+        .map((p) => p.displayName?.trim())
+        .find((n): n is string => Boolean(n));
+      return legacy ?? null;
     } catch {
       return null;
     }
@@ -1037,7 +1063,11 @@ export async function getLiveActivity(
 
   const partyMembers = members.map((m, i) => {
     const def = emblemDefs[i];
-    const displayName = memberLookups[i] || "Guardian";
+    // Drop the "#nnnn" tag suffix for the fireteam chip - name alone reads
+    // cleaner at this size, and uniqueness inside a 6-person fireteam isn't
+    // a concern.
+    const raw = memberLookups[i] || "Guardian";
+    const displayName = raw.split("#")[0] || raw;
     return {
       membershipId: m.membershipId,
       displayName,
@@ -1569,7 +1599,12 @@ export async function getLoadout(
   try {
     data = await bungieFetch<Resp>(
       `/Destiny2/${membership.membershipType}/Profile/${membership.membershipId}/?components=200,205,300,305`,
-      { cacheSeconds: 60 }
+      // Bypass the Next data cache for the loadout fetch entirely. Equipping
+      // a weapon should reflect on the very next AutoRefresh tick, and any
+      // non-zero TTL was racing the 45s tick - users would equip, refresh
+      // would land inside the cache window, stale equipment came back. The
+      // page is force-dynamic anyway so this only fires ~once per tick.
+      { cacheSeconds: 0 }
     );
   } catch {
     return null;
