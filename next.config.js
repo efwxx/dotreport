@@ -14,6 +14,10 @@ const nextConfig = {
       static: 0,
     },
   },
+  // @napi-rs/canvas is a native module that must be loaded from disk at
+  // runtime, not bundled. Listing it here keeps webpack from trying to
+  // include the .node binaries in the server bundle.
+  serverExternalPackages: ["@napi-rs/canvas"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "www.bungie.net" },

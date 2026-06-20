@@ -1,3 +1,44 @@
+/* ---------- Bundled fonts ----------
+   Mirrors the families registered server-side in lib/og-fonts.ts so the
+   editor preview renders with the same typefaces the PNG endpoint emits.
+   All five are variable fonts on the weight axis (Inter also varies opsz),
+   so font-display: swap + a single file per family covers every weight. */
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("/fonts/Manrope.ttf") format("truetype-variations");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/PlusJakartaSans.ttf") format("truetype-variations");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Jost";
+  src: url("/fonts/Jost.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Montserrat";
+  src: url("/fonts/Montserrat.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #0a0a0b;
   --bg-elev: #131316;
@@ -2292,4 +2333,469 @@ footer a:hover { color: var(--text); }
 
 .sched-index-create {
   margin-top: 24px;
+}
+
+/* ---------- /og embed editor ---------- */
+
+/* The editor page widens past .page's 760px default to give the canvas room
+   without zooming all the way down to thumbnail size. Inherits everything
+   else (background, type, gutters) from .page. */
+.page.og-page {
+  max-width: 1100px;
+}
+
+/* Header right-side meta row sits next to the title. Built from
+   .link-pill + save badge so it visually echoes the rest of the site. */
+.og-page-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.og-page-headline-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.og-save-badge {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  letter-spacing: 0.02em;
+}
+.og-save-saving { color: #facc15; border-color: rgba(250, 204, 21, 0.35); }
+.og-save-saved  { color: #4ade80; border-color: rgba(74, 222, 128, 0.35); }
+.og-save-error  { color: #f87171; border-color: rgba(248, 113, 113, 0.45); }
+.og-save-dirty  { color: #fbbf24; border-color: rgba(251, 191, 36, 0.35); }
+
+/* Preview card hosts the canvas. Uses .card chrome so it lines up with the
+   site's existing cards (border, radius, padding). */
+.og-preview-card {
+  min-height: 0;
+  padding: 14px;
+  gap: 10px;
+}
+
+.og-canvas-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.og-canvas-frame {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  /* Subtle checkerboard so transparency in user images is obvious. */
+  background-color: #0c0c10;
+  background-image:
+    linear-gradient(45deg, #16161a 25%, transparent 25%),
+    linear-gradient(-45deg, #16161a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #16161a 75%),
+    linear-gradient(-45deg, transparent 75%, #16161a 75%);
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+}
+.og-canvas {
+  display: block;
+  cursor: default;
+  border-radius: 9px;
+}
+
+/* Selection box + corner handles. Sized against the SCALED canvas so the
+   handles track perfectly without re-applying scale per handle. */
+.og-selection {
+  position: absolute;
+  border: 1.5px solid #60a5fa;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  border-radius: 1px;
+}
+.og-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #60a5fa;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  pointer-events: auto;
+}
+.og-handle-nw { top: -5px; left: -5px; cursor: nwse-resize; }
+.og-handle-ne { top: -5px; right: -5px; cursor: nesw-resize; }
+.og-handle-sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
+.og-handle-se { bottom: -5px; right: -5px; cursor: nwse-resize; }
+
+/* Two-column layers + properties grid below the preview. Stacks on narrow
+   viewports, same breakpoint the rest of the site uses for its grids. */
+.og-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+@media (min-width: 760px) {
+  .og-grid {
+    grid-template-columns: 280px 1fr;
+    align-items: start;
+  }
+}
+
+.og-panel-card {
+  min-height: 0;
+  padding: 14px 16px;
+  gap: 10px;
+}
+
+.og-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.og-empty-hint {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 8px 2px;
+  line-height: 1.5;
+}
+
+.og-layer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.og-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+}
+.og-layer-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.og-layer-row.is-selected {
+  border-color: rgba(96, 165, 250, 0.5);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.og-layer-pick {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  padding: 4px 2px;
+  cursor: pointer;
+  min-width: 0;
+}
+.og-layer-glyph {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.og-layer-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.og-layer-controls {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.og-icon-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--muted);
+  width: 24px;
+  height: 24px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.og-icon-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+.og-icon-danger:hover {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* Properties stack */
+.og-properties {
+  display: flex;
+  flex-direction: column;
+}
+
+.og-prop-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.og-prop-section:first-child { padding-top: 4px; }
+.og-prop-section:last-child  { border-bottom: none; padding-bottom: 4px; }
+
+.og-prop-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.og-prop-subhead {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.og-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.og-field-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.og-field-control {
+  display: block;
+}
+.og-field-control > input[type="text"],
+.og-field-control > input[type="number"],
+.og-field-control > input:not([type]),
+.og-field-control > select,
+.og-field-control > textarea,
+.og-field-control > input[type="range"] {
+  width: 100%;
+}
+.og-field-control > input,
+.og-field-control > select,
+.og-field-control > textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 13px;
+}
+.og-field-control > input:focus,
+.og-field-control > select:focus,
+.og-field-control > textarea:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.og-field-control > textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+.og-field-control > input[type="range"] {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.og-field-control > input[type="checkbox"] {
+  width: auto;
+}
+.og-field-control > input[type="color"] {
+  padding: 0;
+  width: 36px;
+  height: 28px;
+  border-radius: 6px;
+}
+.og-field-control > input[type="file"] {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--muted);
+}
+
+.og-field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 8px;
+}
+.og-field-row .og-field { min-width: 0; }
+
+.og-source-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.og-source-tabs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.og-source-tabs-buttons {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+}
+.og-tab {
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 3px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.og-tab.is-active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.og-source-field > select,
+.og-source-field > input,
+.og-source-field > textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 13px;
+  width: 100%;
+}
+.og-source-field > textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.og-binding-preview {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 2px 2px;
+  word-break: break-all;
+}
+
+.og-color-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.og-color-input input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+.og-color-input input[type="color"] {
+  flex-shrink: 0;
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.og-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.og-asset-thumb {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  aspect-ratio: 1;
+}
+.og-asset-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.og-asset-thumb.is-active {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px #60a5fa;
+}
+
+.og-stop-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 28px;
+  gap: 6px;
+  align-items: center;
+}
+.og-font-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.og-font-picker > select,
+.og-font-picker > input {
+  width: 100%;
+}
+
+.og-stop-row input[type="number"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+}
+
+/* Warmer tone on the destructive reset so it stands apart from the standard
+   add/save pills without screaming. */
+.og-reset-pill {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.35);
+}
+.og-reset-pill:hover {
+  color: #ffb4b4;
+  background: rgba(248, 113, 113, 0.08);
+  border-color: rgba(248, 113, 113, 0.55);
 }

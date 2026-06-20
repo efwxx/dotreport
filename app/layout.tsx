@@ -29,6 +29,19 @@ export async function generateMetadata(): Promise<Metadata> {
   const base: Metadata = {
     title: tabTitle,
     description: "A Guardian profile + now playing.",
+    openGraph: {
+      title: tabTitle,
+      description: "A Guardian profile + now playing.",
+      // Live PNG rendered from /og's saved config. The endpoint resolves
+      // bindings on every fetch, so the embed always reflects the current
+      // emblem / loadout / now-playing.
+      images: ["/api/og/image"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: tabTitle,
+      images: ["/api/og/image"],
+    },
   };
   if (!account) return base;
 
