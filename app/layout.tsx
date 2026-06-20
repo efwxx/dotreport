@@ -26,9 +26,22 @@ export async function generateMetadata(): Promise<Metadata> {
     ? resolveDisplayName(account, heroCfg.displayName)
     : heroCfg.displayName?.trim() || "dotreport";
 
+  // Public origin Discord / Twitter use to resolve the relative og:image URL
+  // below. Without this set, Next defaults to http://localhost:3000 and the
+  // unfurl crawler has nothing reachable to fetch - the embed shows a title
+  // + description but no image.
+  //
+  // Reads SITE_URL first (server-only, simpler in .env.local) and falls back
+  // to NEXT_PUBLIC_SITE_URL so deployments that already set the public
+  // variant just work.
+  const siteUrl =
+    process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  const metadataBase = siteUrl ? safeURL(siteUrl) : undefined;
+
   const base: Metadata = {
     title: tabTitle,
     description: "A Guardian profile + now playing.",
+    metadataBase,
     openGraph: {
       title: tabTitle,
       description: "A Guardian profile + now playing.",
@@ -62,6 +75,18 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   } catch {
     return base;
+  }
+}
+
+// new URL() throws on a malformed string; we'd rather log + drop the
+// metadataBase than 500 the whole layout.
+function safeURL(s: string): URL | undefined {
+  try {
+    return new URL(s);
+  } catch {
+    // eslint-disable-next-line no-console
+    console.warn(`[layout] SITE_URL is not a valid URL: ${s}`);
+    return undefined;
   }
 }
 
