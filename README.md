@@ -23,6 +23,7 @@ loop that refreshes data without reloading the page.
 - [`.env.local` reference](#env-reference)
 - [`config/site.ts` reference](#layout-reference)
 - [Section catalog](#sections)
+- [Optional: /schedule polls](#schedule)
 - [Visual indicators on dots](#dot-indicators)
 - [Project structure](#project-structure)
 - [Recipes](#recipes)
@@ -466,6 +467,37 @@ Three small edits:
    it into `Section.tsx`. Server or client component, your call.
 
 The type system enforces that you provide the right fields in `config/site.ts`.
+
+---
+
+<a id="schedule"></a>
+## Optional: `/schedule` polls
+
+A small scheduling tool for sending availability links to your team.
+
+### Setup
+
+```bash
+node scripts/hash-password.mjs "your password"
+```
+
+Paste the printed line into `.env.local`, restart `next dev`, then go to
+`/schedule/new`.
+
+### Pages
+
+- `/schedule`: password-gated list of all your schedules with share + creator links.
+- `/schedule/new`: create a schedule.
+- `/schedule/<id>`: what you send to your team. Players pick their times here.
+- `/schedule/<id>?token=<...>`: creator view with answers and filters.
+
+### How it works
+
+- Pick dates, a daily time range, slot length, and player count (2 to 12).
+- Optional questions show before the grid.
+- Players click each slot they can run. Each player gets a color.
+- After submitting, players see the group heatmap and can edit their picks.
+- Schedules save to `data/schedules/<id>.json`. The `data/` folder is gitignored.
 
 ---
 
